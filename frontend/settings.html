@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan Sistem - OLT Monitor</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='4' width='14' height='7' rx='2' /%3E%3Crect x='5' y='13' width='14' height='7' rx='2' /%3E%3Cpath d='M8 7.5h.01M8 16.5h.01'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/diagnostic.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans flex font-medium transition-colors duration-300">
+
+
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform -translate-x-full md:translate-x-0 transition-all duration-300 ease-in-out">
+        <div class="h-full flex flex-col">
+            <!-- Brand -->
+            <div class="p-4 flex items-center justify-between brand-container">
+                <div class="flex items-center overflow-hidden">
+                    <div class="p-2 bg-blue-600 rounded-lg mr-3 shadow-lg shadow-blue-500/20 shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div class="flex flex-col truncate">
+                        <span class="text-sm font-bold tracking-tight">GRT NETMON</span>
+                        <span
+                            class="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">Multi-Vendor
+                            NMS</span>
+                    </div>
+                </div>
+                <button onclick="window.toggleSidebar()"
+                    class="text-gray-400 hover:text-blue-500 transition-colors md:hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 space-y-1 mt-2 scrollbar-hide overflow-y-auto">
+                <div class="sidebar-section-header">Platform</div>
+                <a href="index.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                        </path>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <div class="sidebar-section-header">Network</div>
+                <!-- OLT Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('olt-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                                </path>
+                            </svg>
+                            <span class="font-medium truncate">OLT Perangkat</span>
+                        </div>
+                        <svg id="olt-submenu-arrow"
+                            class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div id="olt-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="onu_monitor.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Monitoring ONU</span>
+                        </a>
+                        <a href="olt_devices.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Daftar OLT</span>
+                        </a>
+                    </div>
+                </div>
+
+
+
+                <a href="customers.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                    <span>Pelanggan</span>
+                </a>
+
+                <!-- ROUTER Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('router-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                                </path>
+                            </svg>
+                            <span class="font-medium truncate">Router MikroTik</span>
+                        </div>
+                        <svg id="router-submenu-arrow"
+                            class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div id="router-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="router_active.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>PPPOE Secrets</span>
+                        </a>
+                        <a href="router_isolir.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Data Isolir</span>
+                        </a>
+                        <a href="router_ping.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Ping to User</span>
+                        </a>
+                        <a href="router_setup.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Setup Router</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="terminal.html" target="_blank"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Terminal CLI</span>
+                </a>
+
+                <div class="sidebar-section-header">Admin</div>
+                <a href="accounts.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    <span>Manajemen Akun</span>
+                </a>
+                <a href="settings.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Section -->
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+                <div
+                    class="flex items-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all group cursor-pointer">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
+                        <span id="sidebar-user-initial">A</span>
+                    </div>
+                    <div class="ml-3 overflow-hidden flex-1 active-hide">
+                        <p id="sidebar-user-name" class="text-sm font-semibold truncate text-gray-900 dark:text-white">
+                            Admin</p>
+                        <p id="sidebar-user-role"
+                            class="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">
+                            Administrator</p>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors shrink-0"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+                <button onclick="localStorage.removeItem('olt_auth'); location.reload();"
+                    class="w-full mt-2 flex items-center justify-center space-x-2 bg-red-600/10 hover:bg-red-600 text-red-600 dark:text-red-400 hover:text-white p-2.5 rounded-xl transition border border-red-200 dark:border-red-600/20 text-sm font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Dependencies -->
+
+
+    <!-- Main Content -->
+    <div class="flex-1 md:ml-64 min-h-screen flex flex-col">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center">
+                    <button id="mobile-toggle" onclick="window.toggleSidebar()"
+                        class="glass-button p-2 rounded-xl transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16m-7 6h7"></path>
+                        </svg>
+                    </button>
+                    <div class="ml-4 hidden md:block">
+                        <h2 class="text-xs font-black tracking-widest text-gray-400 uppercase">System Settings</h2>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div
+                        class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                        <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <span
+                            class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Configuration
+                            Mode</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6 md:p-10">
+            <div class="flex items-center gap-4 mb-10">
+                <div class="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl">
+                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold">Pengaturan Sistem</h2>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Konfigurasi preferensi tampilan dan sistem
+                    </p>
+                </div>
+            </div>
+
+            <div class="max-w-4xl space-y-8">
+                <!-- Tampilan Section -->
+                <section
+                    class="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-2xl">
+                    <div class="flex items-center space-x-3 mb-8">
+                        <div class="bg-blue-600/10 p-2 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold">Tampilan & Tema</h3>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Theme Selector -->
+                        <div>
+                            <label
+                                class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest block mb-4">Pilih
+                                Tema Aplikasi</label>
+                            <div class="flex gap-4">
+                                <button onclick="setTheme('light'); updateThemeUI();" id="btn-light"
+                                    class="flex-1 group">
+                                    <div
+                                        class="bg-gray-100 dark:bg-gray-900 border-2 border-transparent group-hover:border-blue-500 rounded-2xl p-4 transition-all text-center">
+                                        <div
+                                            class="bg-white rounded-lg shadow-sm h-12 mb-3 flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <span
+                                            class="text-sm font-bold text-gray-600 dark:text-gray-400 group-hover:text-blue-500">Light
+                                            Mode</span>
+                                    </div>
+                                </button>
+                                <button onclick="setTheme('dark'); updateThemeUI();" id="btn-dark" class="flex-1 group">
+                                    <div
+                                        class="bg-gray-100 dark:bg-gray-900 border-2 border-transparent group-hover:border-blue-500 rounded-2xl p-4 transition-all text-center">
+                                        <div
+                                            class="bg-gray-900 dark:bg-black rounded-lg shadow-sm h-12 mb-3 flex items-center justify-center border border-gray-800 dark:border-gray-700">
+                                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                                                </path>
+                                            </svg>
+                                        </div>
+                                        <span
+                                            class="text-sm font-bold text-gray-600 dark:text-gray-400 group-hover:text-blue-500">Dark
+                                            Mode</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Layout Settings -->
+                        <div>
+                            <label
+                                class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest block mb-4">Efek
+                                Visual</label>
+                            <div class="space-y-3">
+                                <label
+                                    class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl cursor-pointer">
+                                    <span class="text-sm font-medium">Animasi Transisi</span>
+                                    <input type="checkbox" checked
+                                        class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                </label>
+                                <label
+                                    class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl cursor-pointer">
+                                    <span class="text-sm font-medium">Efek Glassmorphism</span>
+                                    <input type="checkbox" checked
+                                        class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                </section>
+
+                <!-- Koneksi Section (Placeholder) -->
+                <section
+                    class="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-2xl">
+                    <div class="flex items-center space-x-3 mb-8">
+                        <div class="bg-green-600/10 p-2 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold">Koneksi OLT</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label
+                                class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest block mb-2">Polling
+                                Interval (Detik)</label>
+                            <input type="number" value="30"
+                                class="w-full max-w-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <p class="text-xs text-gray-500">Interval pengambilan data otomatis dari semua OLT yang
+                            terhubung.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Activity History Section -->
+                <section
+                    class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div
+                        class="p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="flex items-center gap-4 shrink-0">
+                            <div class="bg-amber-600/10 p-2 rounded-lg">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-bold text-gray-800 dark:text-white">Riwayat Aktivitas Sistem</h3>
+                            <div
+                                class="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-lg">
+                                <span class="text-[10px] font-black text-gray-400 uppercase">Tampilkan</span>
+                                <select id="pageSize" onchange="changePageSize()"
+                                    class="bg-gray-50 dark:bg-gray-900 text-xs font-bold outline-none cursor-pointer text-gray-700 dark:text-white">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto ml-auto">
+                            <!-- Search Input -->
+                            <div class="relative w-full sm:w-64">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input type="text" id="activitySearch" onkeyup="handleSearch()"
+                                    placeholder="Cari aktivitas..."
+                                    class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-amber-500 transition shadow-sm">
+                            </div>
+                            <button onclick="loadActivities()"
+                                class="bg-gray-100 dark:bg-gray-700 p-2.5 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead
+                                class="bg-gray-50 dark:bg-gray-900/50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4">Waktu</th>
+                                    <th class="px-6 py-4">User</th>
+                                    <th class="px-6 py-4">Aksi</th>
+                                    <th class="px-6 py-4">Deskripsi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activityLogTable" class="divide-y divide-gray-100 dark:divide-gray-700 text-xs">
+                                <tr>
+                                    <td colspan="4" class="px-6 py-20 text-center">
+                                        <div class="flex flex-col items-center space-y-3">
+                                            <div
+                                                class="w-10 h-10 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin">
+                                            </div>
+                                            <span class="text-gray-400 text-sm italic">Memuat riwayat
+                                                aktivitas...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Footer -->
+                    <div
+                        class="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <p class="text-xs text-gray-500 font-medium" id="paginationInfo">
+                            Menampilkan 0 sampai 0 dari 0 data
+                        </p>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="prevPage()" id="btnPrev" disabled
+                                class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 19l-7-7 7-7"></path>
+                                </svg>
+                            </button>
+                            <div
+                                class="px-4 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-bold">
+                                Halaman <span id="currentPageDisplay">1</span> dari <span
+                                    id="totalPagesDisplay">1</span>
+                            </div>
+                            <button onclick="nextPage()" id="btnNext" disabled
+                                class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <script>
+            function updateThemeUI() {
+                const theme = getTheme();
+                const btnLight = document.getElementById('btn-light').firstElementChild;
+                const btnDark = document.getElementById('btn-dark').firstElementChild;
+
+                if (theme === 'dark') {
+                    btnDark.classList.add('border-blue-500', 'bg-blue-600/5');
+                    btnLight.classList.remove('border-blue-500', 'bg-blue-600/5');
+                } else {
+                    btnLight.classList.add('border-blue-500', 'bg-blue-600/5');
+                    btnDark.classList.remove('border-blue-500', 'bg-blue-600/5');
+                }
+            }
+
+            // Activity Pagination State
+            let currentPage = 1;
+            let pageSize = 10;
+            let totalRecords = 0;
+            let searchQuery = '';
+            let searchTimeout = null;
+
+            function handleSearch() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchQuery = document.getElementById('activitySearch').value;
+                    currentPage = 1;
+                    loadActivities();
+                }, 500);
+            }
+
+            function changePageSize() {
+                pageSize = parseInt(document.getElementById('pageSize').value);
+                currentPage = 1;
+                loadActivities();
+            }
+
+            function nextPage() {
+                const totalPages = Math.ceil(totalRecords / pageSize);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadActivities();
+                }
+            }
+
+            function prevPage() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadActivities();
+                }
+            }
+
+            async function loadActivities() {
+                const tableBody = document.getElementById('activityLogTable');
+                const offset = (currentPage - 1) * pageSize;
+
+                try {
+                    const result = await ActivityAPI.listActivities(pageSize, offset, searchQuery);
+                    console.log("ActivityAPI result:", result);
+
+                    if (result.status === 'success') {
+                        const logs = result.data || [];
+                        totalRecords = result.total || 0;
+                        const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+
+                        // Update Pagination UI
+                        document.getElementById('currentPageDisplay').textContent = currentPage;
+                        document.getElementById('totalPagesDisplay').textContent = totalPages;
+                        document.getElementById('btnPrev').disabled = (currentPage === 1);
+                        document.getElementById('btnNext').disabled = (currentPage >= totalPages);
+
+                        const start = totalRecords === 0 ? 0 : offset + 1;
+                        const end = Math.min(offset + pageSize, totalRecords);
+                        document.getElementById('paginationInfo').textContent = `Menampilkan ${start} sampai ${end} dari ${totalRecords} data`;
+
+                        if (logs.length === 0) {
+                            tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-gray-400 italic">Belum ada riwayat aktivitas.</td></tr>';
+                            return;
+                        }
+
+                        tableBody.innerHTML = logs.map(log => {
+                            const date = new Date(log.created_at).toLocaleString('id-ID', {
+                                day: '2-digit', month: 'short', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                            });
+
+                            let actionClass = "bg-gray-100 text-gray-600";
+                            const action = log.action || '';
+                            if (action === "LOGIN") actionClass = "bg-blue-100 text-blue-600";
+                            if (action.includes("ADD")) actionClass = "bg-green-100 text-green-600";
+                            if (action.includes("UPDATE") || action.includes("EDIT")) actionClass = "bg-amber-100 text-amber-600";
+                            if (action.includes("DELETE") || action.includes("REMOVE")) actionClass = "bg-red-100 text-red-600";
+
+                            return `
+                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition">
+                                    <td class="px-6 py-4 text-gray-500 font-mono">${date}</td>
+                                    <td class="px-6 py-4 font-bold text-blue-600 dark:text-blue-400">${log.username || 'System'}</td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${actionClass}">${action}</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-gray-600 dark:text-gray-300">${log.description}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    } else {
+                        tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-red-500 font-bold">Gagal memuat: ${result.message}</td></tr>`;
+                    }
+                } catch (error) {
+                    console.error("loadActivities Exception:", error);
+                    tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-red-500 font-bold">Terjadi Kesalahan: ${error.message}</td></tr>`;
+                }
+            }
+
+            // Initialize UI
+            updateThemeUI();
+
+            // Wait for API and load
+            setTimeout(() => {
+                if (window.ActivityAPI) loadActivities();
+            }, 500);
+        </script>
+    </div>
+</body>
+
+</html>

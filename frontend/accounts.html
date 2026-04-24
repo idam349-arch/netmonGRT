@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Akun - OLT Monitor</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='4' width='14' height='7' rx='2' /%3E%3Crect x='5' y='13' width='14' height='7' rx='2' /%3E%3Cpath d='M8 7.5h.01M8 16.5h.01'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/diagnostic.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans flex font-medium transition-colors duration-300">
+
+
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform -translate-x-full md:translate-x-0 transition-all duration-300 ease-in-out">
+        <div class="h-full flex flex-col">
+            <!-- Brand -->
+            <div class="p-4 flex items-center justify-between brand-container">
+                <div class="flex items-center overflow-hidden">
+                    <div class="p-2 bg-blue-600 rounded-lg mr-3 shadow-lg shadow-blue-500/20 shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div class="flex flex-col truncate">
+                        <span class="text-sm font-bold tracking-tight">GRT NETMON</span>
+                        <span
+                            class="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">Multi-Vendor
+                            NMS</span>
+                    </div>
+                </div>
+                <button onclick="window.toggleSidebar()"
+                    class="text-gray-400 hover:text-blue-500 transition-colors md:hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 space-y-1 mt-2 scrollbar-hide overflow-y-auto">
+                <div class="sidebar-section-header">Platform</div>
+                <a href="index.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                        </path>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <div class="sidebar-section-header">Network</div>
+                <!-- OLT Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('olt-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                                </path>
+                            </svg>
+                            <span class="font-medium truncate">OLT Perangkat</span>
+                        </div>
+                        <svg id="olt-submenu-arrow"
+                            class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div id="olt-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="onu_monitor.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Monitoring ONU</span>
+                        </a>
+                        <a href="olt_devices.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Daftar OLT</span>
+                        </a>
+                    </div>
+                </div>
+
+
+
+                <a href="customers.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                    <span>Pelanggan</span>
+                </a>
+
+                <!-- ROUTER Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('router-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                                </path>
+                            </svg>
+                            <span class="font-medium truncate">Router MikroTik</span>
+                        </div>
+                        <svg id="router-submenu-arrow"
+                            class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div id="router-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="router_active.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>PPPOE Secrets</span>
+                        </a>
+                        <a href="router_isolir.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Data Isolir</span>
+                        </a>
+                        <a href="router_ping.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Ping to User</span>
+                        </a>
+                        <a href="router_setup.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Setup Router</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="terminal.html" target="_blank"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Terminal CLI</span>
+                </a>
+
+                <div class="sidebar-section-header">Admin</div>
+                <a href="accounts.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    <span>Manajemen Akun</span>
+                </a>
+                <a href="settings.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Section -->
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+                <div
+                    class="flex items-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all group cursor-pointer">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
+                        <span id="sidebar-user-initial">A</span>
+                    </div>
+                    <div class="ml-3 overflow-hidden flex-1 active-hide">
+                        <p id="sidebar-user-name" class="text-sm font-semibold truncate text-gray-900 dark:text-white">
+                            Admin</p>
+                        <p id="sidebar-user-role"
+                            class="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">
+                            Administrator</p>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors shrink-0"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+                <button onclick="localStorage.removeItem('olt_auth'); location.reload();"
+                    class="w-full mt-2 flex items-center justify-center space-x-2 bg-red-600/10 hover:bg-red-600 text-red-600 dark:text-red-400 hover:text-white p-2.5 rounded-xl transition border border-red-200 dark:border-red-600/20 text-sm font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 md:ml-64 min-h-screen flex flex-col">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center">
+                    <button id="mobile-toggle" onclick="window.toggleSidebar()"
+                        class="glass-button p-2 rounded-xl transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16m-7 6h7"></path>
+                        </svg>
+                    </button>
+                    <div class="ml-4 hidden md:block">
+                        <h2 class="text-xs font-black tracking-widest text-gray-400 uppercase">User Accounts</h2>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div
+                        class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                        <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <span
+                            class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Admin
+                            Mode</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6 md:p-10">
+
+            <!-- Dependencies -->
+
+            <script>
+
+                // --- ACCOUNT MANAGEMENT LOGIC ---
+                let allAccounts = [];
+
+                async function loadAccounts() {
+                    const tableBody = document.getElementById('accountTableBody');
+                    try {
+                        const result = await AccountAPI.listAccounts();
+
+                        if (result.status === 'error') {
+                            tableBody.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-red-500 font-bold">Error: ${result.message}</td></tr>`;
+                            return;
+                        }
+
+                        allAccounts = result.data || [];
+
+                        if (allAccounts.length === 0) {
+                            tableBody.innerHTML = '<tr><td colspan="4" class="py-10 text-center text-gray-400 italic">Belum ada akun terdaftar.</td></tr>';
+                            return;
+                        }
+
+                        tableBody.innerHTML = allAccounts.map(acc => `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition group">
+                        <td class="py-4 px-2 font-bold text-gray-900 dark:text-white">${acc.username}</td>
+                        <td class="py-4 px-2">
+                            <span class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50 px-3 py-1 rounded-lg text-[10px] font-black uppercase">${acc.role}</span>
+                        </td>
+                        <td class="py-4 px-2">
+                            <span class="flex items-center ${acc.status === 'Aktif' ? 'text-green-600 dark:text-green-400' : 'text-red-500'} text-xs font-bold">
+                                <span class="w-1.5 h-1.5 ${acc.status === 'Aktif' ? 'bg-green-500' : 'bg-red-500'} rounded-full mr-2"></span>
+                                ${acc.status}
+                            </span>
+                        </td>
+                        <td class="py-4 px-2 text-center">
+                            <div class="flex items-center justify-center space-x-3">
+                                <button onclick="openAccountModal('${acc.id}')" class="text-blue-600 dark:text-blue-400 hover:underline font-bold text-[10px] uppercase tracking-tighter">Edit</button>
+                                <button onclick="deleteAccount('${acc.id}')" class="text-red-500/50 hover:text-red-500 font-bold text-[10px] uppercase tracking-tighter transition">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+                    } catch (error) {
+                        console.error("Failed to load accounts:", error);
+                        tableBody.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-red-500 font-bold">
+                            Gagal memuat data: ${error.message}<br>
+                            <span class="text-xs font-normal italic">Cek koneksi internet atau konsol browser (F12)</span>
+                        </td></tr>`;
+                    }
+                }
+
+                function openAccountModal(accountId = null) {
+                    const modal = document.getElementById('accountModal');
+                    const content = document.getElementById('accountModalContent');
+                    const title = document.getElementById('modalTitle');
+                    const saveBtn = document.getElementById('saveBtn');
+                    const idInput = document.getElementById('editAccountId');
+
+                    const cpContainer = document.getElementById('currentPasswordContainer');
+                    const lblNewPass = document.getElementById('lblNewPassword');
+
+                    // Re-reset inputs
+                    document.getElementById('accUsername').value = '';
+                    document.getElementById('accPassword').value = '';
+                    if (document.getElementById('accCurrentPassword')) {
+                        document.getElementById('accCurrentPassword').value = '';
+                    }
+                    document.getElementById('accRole').value = 'admin';
+                    document.getElementById('accStatus').value = 'Aktif';
+
+                    if (accountId) {
+                        const acc = allAccounts.find(a => a.id === accountId);
+                        if (acc) {
+                            title.innerText = 'Edit Akun';
+                            idInput.value = acc.id;
+                            document.getElementById('accUsername').value = acc.username;
+                            document.getElementById('accRole').value = acc.role;
+                            document.getElementById('accStatus').value = acc.status;
+                            if (cpContainer) cpContainer.classList.remove('hidden');
+                            if (lblNewPass) lblNewPass.innerText = 'Password Baru (Opsional)';
+                        }
+                    } else {
+                        title.innerText = 'Tambah Akun Baru';
+                        idInput.value = '';
+                        if (cpContainer) cpContainer.classList.add('hidden');
+                        if (lblNewPass) lblNewPass.innerText = 'Password';
+                    }
+
+                    modal.classList.remove('hidden');
+                    setTimeout(() => {
+                        content.classList.remove('scale-95', 'opacity-0');
+                    }, 10);
+                }
+
+                function closeAccountModal() {
+                    const modal = document.getElementById('accountModal');
+                    const content = document.getElementById('accountModalContent');
+                    content.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                    }, 300);
+                }
+
+                async function saveAccount() {
+                    const id = document.getElementById('editAccountId').value;
+                    const userData = {
+                        username: document.getElementById('accUsername').value,
+                        password: document.getElementById('accPassword').value,
+                        role: document.getElementById('accRole').value,
+                        status: document.getElementById('accStatus').value
+                    };
+
+                    if (document.getElementById('accCurrentPassword')) {
+                        userData.current_password = document.getElementById('accCurrentPassword').value;
+                    }
+
+                    if (id && userData.password && !userData.current_password) {
+                        alert("Harap masukkan password sebelumnya untuk mengganti password baru!");
+                        return;
+                    }
+
+                    if (userData.password) {
+                        console.log("DEBUG: Password length to send:", userData.password.length);
+                    }
+
+                    if (!userData.username || (!id && !userData.password)) {
+                        alert("Username dan Password wajib diisi!");
+                        return;
+                    }
+
+                    // Remove password from update if empty (assuming you want to keep current password)
+                    if (id && !userData.password) {
+                        delete userData.password;
+                    }
+
+                    if (!userData.current_password) {
+                        delete userData.current_password;
+                    }
+
+                    const btn = document.getElementById('saveBtn');
+                    const originalText = btn.innerText;
+                    btn.innerText = 'Menyimpan...';
+                    btn.disabled = true;
+
+                    try {
+                        let result;
+                        if (id) {
+                            result = await AccountAPI.updateAccount(id, userData);
+                        } else {
+                            result = await AccountAPI.addAccount(userData);
+                        }
+
+                        if (result.status === 'success') {
+                            closeAccountModal();
+                            loadAccounts();
+                        } else {
+                            alert("Error: " + result.message);
+                        }
+                    } catch (error) {
+                        alert("Gagal menyimpan data ke Supabase.");
+                    } finally {
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                    }
+                }
+
+                async function deleteAccount(id) {
+                    if (!confirm('Apakah Anda yakin ingin menghapus akun ini?')) return;
+
+                    try {
+                        const result = await AccountAPI.deleteAccount(id);
+                        if (result.status === 'success') {
+                            loadAccounts();
+                        } else {
+                            alert("Gagal menghapus: " + result.message);
+                        }
+                    } catch (error) {
+                        alert("Error koneksi ke database.");
+                    }
+                }
+
+                document.addEventListener('DOMContentLoaded', loadAccounts);
+            </script>
+
+
+            <div class="flex items-center gap-4 mb-6">
+                <div class="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl">
+                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold">Manajemen Akun & Role</h2>
+                </div>
+            </div>
+            <div
+                class="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm dark:shadow-2xl transition-colors">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-gray-500 dark:text-gray-400 uppercase text-xs font-black tracking-widest">Daftar
+                        Pengguna</h3>
+                    <button onclick="openAccountModal()"
+                        class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl font-bold text-sm transition shadow-lg shadow-blue-500/20 active:scale-95">+
+                        Akun Baru</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead
+                            class="text-gray-400 dark:text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-gray-100 dark:border-gray-700">
+                            <tr>
+                                <th class="py-4 px-2">Username</th>
+                                <th class="py-4 px-2">Role</th>
+                                <th class="py-4 px-2">Status</th>
+                                <th class="py-4 px-2 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accountTableBody" class="divide-y divide-gray-50 dark:divide-gray-700/50">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Account Modal (Add/Edit) -->
+        <div id="accountModal"
+            class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+            <div class="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden transition-all transform scale-95 opacity-0 duration-300"
+                id="accountModalContent">
+                <div class="p-8">
+                    <h3 id="modalTitle" class="text-2xl font-bold mb-6">Tambah Akun Baru</h3>
+                    <input type="hidden" id="editAccountId">
+
+                    <div class="space-y-4">
+                        <div>
+                            <label
+                                class="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1 px-1">Username</label>
+                            <input type="text" id="accUsername" placeholder="e.g. admin_pro"
+                                class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div id="currentPasswordContainer" class="hidden">
+                            <label
+                                class="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1 px-1 text-orange-500">Password
+                                Sebelumnya (Wajib jika ganti password)</label>
+                            <input type="password" id="accCurrentPassword" placeholder="••••••••"
+                                autocomplete="new-password"
+                                class="w-full bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-700/50 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition placeholder-orange-300">
+                        </div>
+                        <div>
+                            <label id="lblNewPassword"
+                                class="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1 px-1">Password</label>
+                            <input type="password" id="accPassword" placeholder="••••••••" autocomplete="new-password"
+                                class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    class="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1 px-1">Role</label>
+                                <select id="accRole"
+                                    class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition cursor-pointer">
+                                    <option value="admin">Admin</option>
+                                    <option value="Superadmin">Superadmin</option>
+                                    <option value="technician">Teknisi</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1 px-1">Status</label>
+                                <select id="accStatus"
+                                    class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition cursor-pointer">
+                                    <option value="Aktif">Aktif</option>
+                                    <option value="Nonaktif">Nonaktif</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex gap-3">
+                        <button onclick="closeAccountModal()"
+                            class="flex-1 px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 font-bold rounded-2xl hover:bg-gray-200 transition">Batal</button>
+                        <button id="saveBtn" onclick="saveAccount()"
+                            class="flex-1 px-6 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition">Simpan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

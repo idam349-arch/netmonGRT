@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Vendor OLT Monitoring</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='4' width='14' height='7' rx='2' /%3E%3Crect x='5' y='13' width='14' height='7' rx='2' /%3E%3Cpath d='M8 7.5h.01M8 16.5h.01'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/diagnostic.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans flex font-medium transition-colors duration-300">
+
+
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform -translate-x-full md:translate-x-0 transition-all duration-300 ease-in-out">
+        <div class="h-full flex flex-col">
+            <!-- Brand -->
+            <div class="p-4 flex items-center justify-between brand-container">
+                <div class="flex items-center overflow-hidden">
+                    <div class="p-2 bg-blue-600 rounded-lg mr-3 shadow-lg shadow-blue-500/20 shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div class="flex flex-col truncate">
+                        <span class="text-sm font-bold tracking-tight">GRT NETMON</span>
+                        <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">Multi-Vendor NMS</span>
+                    </div>
+                </div>
+                <button onclick="window.toggleSidebar()" class="text-gray-400 hover:text-blue-500 transition-colors md:hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 space-y-1 mt-2 scrollbar-hide overflow-y-auto">
+                <div class="sidebar-section-header">Platform</div>
+                <a href="index.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <div class="sidebar-section-header">Network</div>
+                <!-- OLT Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('olt-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            <span class="font-medium truncate">OLT Perangkat</span>
+                        </div>
+                        <svg id="olt-submenu-arrow" class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="olt-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="onu_monitor.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Monitoring ONU</span>
+                        </a>
+                        <a href="olt_devices.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Daftar OLT</span>
+                        </a>
+                    </div>
+                </div>
+
+
+
+                <a href="customers.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    <span>Pelanggan</span>
+                </a>
+
+                <!-- ROUTER Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('router-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                            </svg>
+                            <span class="font-medium truncate">Router MikroTik</span>
+                        </div>
+                        <svg id="router-submenu-arrow" class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="router-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="router_active.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>PPPOE Secrets</span>
+                        </a>
+                        <a href="router_isolir.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Data Isolir</span>
+                        </a>
+                        <a href="router_ping.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Ping to User</span>
+                        </a>
+                        <a href="router_setup.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Setup Router</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="terminal.html" target="_blank"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Terminal CLI</span>
+                </a>
+
+                <div class="sidebar-section-header">Admin</div>
+                <a href="accounts.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>Manajemen Akun</span>
+                </a>
+                <a href="settings.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Section -->
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+                <div class="flex items-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all group cursor-pointer">
+                    <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
+                        <span id="sidebar-user-initial">A</span>
+                    </div>
+                    <div class="ml-3 overflow-hidden flex-1 active-hide">
+                        <p id="sidebar-user-name" class="text-sm font-semibold truncate text-gray-900 dark:text-white">Admin</p>
+                        <p id="sidebar-user-role" class="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Administrator</p>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+                <button onclick="localStorage.removeItem('olt_auth'); location.reload();"
+                    class="w-full mt-2 flex items-center justify-center space-x-2 bg-red-600/10 hover:bg-red-600 text-red-600 dark:text-red-400 hover:text-white p-2.5 rounded-xl transition border border-red-200 dark:border-red-600/20 text-sm font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 md:ml-64 min-h-screen flex flex-col">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center">
+                    <button id="mobile-toggle" onclick="window.toggleSidebar()"
+                        class="glass-button p-2 rounded-xl transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16m-7 6h7"></path>
+                        </svg>
+                    </button>
+                    <div class="ml-4 hidden md:block">
+                        <h2 class="text-xs font-black tracking-widest text-gray-400 uppercase">Dashboard</h2>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div
+                        class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                        <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                        <span
+                            class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">System
+                            Live</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="p-6 md:p-10 space-y-10">
+            <!-- Header Section -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl">
+                        <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-black tracking-tight text-gray-800 dark:text-white">Dashboard
+                            Monitoring</h2>
+                        <p class="text-gray-400 text-sm mt-1 font-medium">Pantau status OLT dan ONU secara real-time</p>
+                    </div>
+                </div>
+                <div
+                    class="bg-gray-100 dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 flex text-sm">
+                    <button
+                        class="px-4 py-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm dark:shadow-none font-bold text-blue-600 dark:text-white">Live
+                        Dashboard</button>
+                </div>
+            </div>
+
+            <!-- Summary Cards Grid -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Client Aktif -->
+                <div
+                    class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-shadow">
+                    <h3 class="text-gray-500 dark:text-gray-400 uppercase text-[10px] font-black tracking-widest mb-2">
+                        Client Aktif</h3>
+                    <p id="clientAktifCount" class="text-4xl font-extrabold text-emerald-600 dark:text-emerald-400">0
+                    </p>
+                    <div
+                        class="flex items-center mt-3 text-emerald-500 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse mr-2"></span>
+                        Live Stats
+                    </div>
+                </div>
+
+                <!-- Client Isolir -->
+                <div
+                    class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-shadow">
+                    <h3 class="text-gray-500 dark:text-gray-400 uppercase text-[10px] font-black tracking-widest mb-2">
+                        Client Suspend/Isolir</h3>
+                    <p id="clientIsolirCount" class="text-4xl font-extrabold text-orange-600 dark:text-orange-400">0</p>
+                    <p class="text-gray-400 dark:text-gray-500 text-[10px] mt-3 font-black uppercase tracking-wider">
+                        Perlu Tindakan</p>
+                </div>
+
+                <!-- Client Pending -->
+                <div
+                    class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-shadow sm:col-span-2 lg:col-span-1">
+                    <h3 class="text-gray-500 dark:text-gray-400 uppercase text-[10px] font-black tracking-widest mb-2">
+                        Pending Instalasi</h3>
+                    <p id="clientPendingCount" class="text-4xl font-extrabold text-blue-600 dark:text-blue-500">0</p>
+                    <a href="customers.html"
+                        class="text-blue-600/70 dark:text-blue-400/50 text-[10px] mt-3 font-black uppercase tracking-wider underline cursor-pointer hover:text-blue-500">Lihat
+                        Detail →</a>
+                </div>
+            </section>
+
+
+            <!-- Main Data Grid (Table and Activity) -->
+            <section class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                <!-- Table Section (Left) -->
+                <div
+                    class="xl:col-span-8 bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div
+                        class="p-6 md:p-8 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Perangkat OLT Aktif</h2>
+                        <span
+                            class="text-[9px] bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded-lg font-black uppercase tracking-widest ring-1 ring-green-200 dark:ring-green-800/50">Active
+                            Stats</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead
+                                class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest font-black">
+                                <tr>
+                                    <th class="px-8 py-5">Nama Perangkat</th>
+                                    <th class="px-8 py-5">Vendor/IP</th>
+                                    <th class="px-8 py-5">Status</th>
+                                    <th class="px-8 py-5 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboardOltTable" class="divide-y divide-gray-100 dark:divide-gray-700/50">
+                                <tr>
+                                    <td colspan="4" class="px-8 py-10 text-center text-gray-400 italic font-medium">
+                                        Memuat data monitoring...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Router Device Section (Right) -->
+                <div
+                    class="xl:col-span-4 flex flex-col bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm h-[500px]">
+                    <div
+                        class="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/10">
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Data Perangkat Router</h2>
+                            <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mt-0.5">MikroTik
+                                Devices</p>
+                        </div>
+                        <a href="router_setup.html"
+                            class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-500/20">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </a>
+                    </div>
+                    <div id="dashboardRouterList" class="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+                        <div class="text-center py-20 text-gray-400 italic text-xs font-medium">Memuat data router...
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-auto p-10 text-center text-gray-600 text-xs font-bold uppercase tracking-widest">
+            OLT Monitoring Multi-Vendor System &copy; 2026
+        </footer>
+    </div>
+
+
+    <script>
+
+        // Activity List Reference
+        const activityList = document.getElementById('activityList');
+        function addLog(msg, type = 'info', olt = 'OLT-ZTE-TEST', pon = '1/1/1') {
+            const time = new Date().toLocaleString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).replace(/\./g, ':');
+
+            const rawTime = new Date().toLocaleTimeString('id-ID', { hour12: false });
+
+            let iconColor = 'text-blue-500';
+            let bgColor = 'bg-blue-50 dark:bg-blue-900/10';
+            let icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+            if (type === 'success') {
+                iconColor = 'text-green-500';
+                bgColor = 'bg-green-50 dark:bg-green-900/10';
+                icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            } else if (type === 'danger' || type === 'error') {
+                iconColor = 'text-red-500';
+                bgColor = 'bg-red-50 dark:bg-red-900/10';
+                icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>';
+            } else if (type === 'primary' || type === 'info' || msg.toLowerCase().includes('unconfig')) {
+                iconColor = 'text-blue-500';
+                bgColor = 'bg-blue-50 dark:bg-blue-900/10';
+                icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            } else {
+                iconColor = 'text-yellow-500';
+                bgColor = 'bg-yellow-50 dark:bg-yellow-900/10';
+                icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            }
+
+            // Save to localStorage
+            const newLog = { msg, type, time, olt, pon };
+            const logs = JSON.parse(localStorage.getItem('OLT_ACTIVITY_LOGS') || '[]');
+            logs.unshift(newLog);
+            localStorage.setItem('OLT_ACTIVITY_LOGS', JSON.stringify(logs.slice(0, 100)));
+
+            // activityList might be missing in some dashboard versions
+            if (!activityList) return;
+
+            // Remove empty placeholder
+            if (activityList.querySelector('.text-center')) {
+                activityList.innerHTML = '';
+            }
+
+            const logItem = document.createElement('div');
+            logItem.className = `flex items-start space-x-3 p-3 rounded-2xl ${bgColor} border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition animate-slide-in`;
+            logItem.innerHTML = `
+                <div class="mt-0.5 ${iconColor}">${icon}</div>
+                <div class="flex-1">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">${olt} • PON ${pon}</p>
+                    <p class="text-xs font-bold text-gray-800 dark:text-gray-200">${msg}</p>
+                    <p class="text-[9px] text-gray-400 mt-1 font-mono">${rawTime}</p>
+                </div>
+            `;
+
+            activityList.insertBefore(logItem, activityList.firstChild);
+
+            // Limit logs
+            if (activityList.children.length > 50) {
+                activityList.removeChild(activityList.lastChild);
+            }
+        }
+
+        function clearLogs() {
+            localStorage.removeItem('OLT_ACTIVITY_LOGS');
+            activityList.innerHTML = `
+                <div class="text-center py-10">
+                    <div class="inline-flex items-center justify-center w-12 h-12 bg-gray-50 dark:bg-gray-700/50 rounded-2xl text-gray-300 dark:text-gray-600 mb-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Logs Cleared</p>
+                </div>
+            `;
+        }
+
+        // Mock Real-time Events
+        const clients = ['Bpk. Rahmad', 'Toko Berkah', 'Cafe Digital', 'PT. Maju Jaya', 'Ibu Siti', 'Warkop Milenial'];
+        const types = [
+            { msg: 'ONT [CLIENT] Connected', type: 'success' },
+            { msg: 'ONT [CLIENT] LOS Warning', type: 'danger' },
+            { msg: 'ONT [CLIENT] Offline', type: 'danger' },
+            { msg: 'New Unconfig ONT Detected', type: 'info' }
+        ];
+
+        function startMockLog() {
+            setInterval(() => {
+                const client = clients[Math.floor(Math.random() * clients.length)];
+                const type = types[Math.floor(Math.random() * types.length)];
+                addLog(type.msg.replace('[CLIENT]', client), type.type);
+            }, 15000);
+        }
+
+        let dashboardDevices = [];
+        let dashboardRouters = [];
+
+        async function updateOltStatuses() {
+            dashboardDevices.forEach(async (olt) => {
+                const statusCell = document.getElementById(`olt-status-${olt.id}`);
+                if (!statusCell) return;
+
+                try {
+                    const res = await OltAPI.checkStatus({
+                        olt_id: olt.id
+                    });
+                    if (res.online) {
+                        statusCell.innerHTML = `
+                            <span class="flex items-center text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase ring-1 ring-emerald-200 dark:ring-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/10 px-2.5 py-1 rounded-lg w-max">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>
+                                Online
+                            </span>
+                        `;
+                    } else {
+                        statusCell.innerHTML = `
+                            <span class="flex items-center text-red-500 text-[10px] font-black uppercase ring-1 ring-red-100 dark:ring-red-900/20 bg-red-50 dark:bg-red-900/10 px-2.5 py-1 rounded-lg w-max">
+                                <span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
+                                Offline
+                            </span>
+                        `;
+                    }
+                } catch (e) {
+                    statusCell.innerHTML = `<span class="text-[10px] text-red-500 font-bold">ERROR</span>`;
+                }
+            });
+        }
+
+        async function updateRouterStatuses() {
+            dashboardRouters.forEach(async (router) => {
+                const statusBadge = document.getElementById(`router-status-${router.id}`);
+                if (!statusBadge) return;
+
+                try {
+                    const res = await RouterAPI.testConnection({
+                        router_id: String(router.id)
+                    });
+                    if (res.status === 'success') {
+                        statusBadge.className = "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter ring-1 ring-emerald-200 dark:ring-emerald-800/50";
+                        statusBadge.textContent = "Online";
+                    } else {
+                        statusBadge.className = "bg-red-50 dark:bg-red-900/10 text-red-600 text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter ring-1 ring-red-200 dark:ring-red-800/50";
+                        statusBadge.textContent = "Offline";
+                    }
+                } catch (e) {
+                    statusBadge.textContent = "ERR";
+                }
+            });
+        }
+
+        async function loadDashboard(isInitial = false) {
+            const tableBody = document.getElementById('dashboardOltTable');
+            const routerContainer = document.getElementById('dashboardRouterList');
+
+            // Set safety timeout for initial load
+            const loadTimeout = isInitial ? setTimeout(() => {
+                const currentContent = tableBody ? tableBody.innerHTML : '';
+                if (currentContent.includes('Memuat') || currentContent === '') {
+                    if (tableBody) tableBody.innerHTML = `<tr><td colspan="4" class="px-8 py-10 text-center text-orange-500 font-bold bg-orange-50/10 rounded-2xl">
+                        Koneksi Lambat...<br>
+                        <span class="text-[10px] font-normal italic">Masih mencoba mengambil data dari Supabase Cloud...</span>
+                    </td></tr>`;
+                }
+            }, 7000) : null;
+
+            try {
+                console.log("Dashboard: Memulai pengambilan data paralel...");
+
+                // 1. Parallel Fetch for all necessary data
+                const [resCustomers, resOlt, resRouters] = await Promise.all([
+                    CustomerAPI.listCustomers(),
+                    OltAPI.listDevices(),
+                    RouterAPI.listRouters()
+                ]);
+
+                if (loadTimeout) clearTimeout(loadTimeout);
+
+                console.log("Dashboard: Data fetched parallelly.");
+
+                // 2. Process Customers Stats
+                if (resCustomers.status !== 'error') {
+                    const customers = resCustomers.data || [];
+                    const aktif = customers.filter(c => c.status === 'Aktif').length;
+                    const isolir = customers.filter(c => c.status === 'Isolir').length;
+                    const pending = customers.filter(c => c.status === 'Pending').length;
+
+                    document.getElementById('clientAktifCount').textContent = aktif;
+                    document.getElementById('clientIsolirCount').textContent = isolir;
+                    document.getElementById('clientPendingCount').textContent = pending;
+                }
+
+                // 3. Process OLT Devices Table
+                if (resOlt.status === 'error') {
+                    tableBody.innerHTML = `<tr><td colspan="4" class="px-8 py-10 text-center text-red-500 font-bold bg-red-50/50 rounded-2xl">
+                        DATABASE ERROR: ${resOlt.message}<br>
+                        <span class="text-[10px] font-normal italic">Gagal mengambil data OLT dari Supabase.</span>
+                    </td></tr>`;
+                } else {
+                    const devices = resOlt.data || [];
+                    const deviceIds = devices.map(d => d.id).join(',');
+                    const oldDeviceIds = dashboardDevices.map(d => d.id).join(',');
+
+                    if (isInitial || deviceIds !== oldDeviceIds) {
+                        dashboardDevices = devices;
+                        if (devices.length === 0) {
+                            tableBody.innerHTML = '<tr><td colspan="4" class="px-8 py-10 text-center text-gray-400 italic font-medium border-2 border-dashed border-gray-100 dark:border-gray-700/50 rounded-3xl">Belum ada perangkat OLT terdaftar.</td></tr>';
+                        } else {
+                            tableBody.innerHTML = devices.map(olt => `
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition group">
+                                    <td class="px-8 py-6">
+                                        <span class="font-black text-gray-800 dark:text-gray-100 block">${olt.name}</span>
+                                    </td>
+                                    <td class="px-8 py-6">
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter">${olt.vendor}</span>
+                                            <span class="text-[10px] font-mono text-gray-400 font-bold">${olt.ip}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-6" id="olt-status-${olt.id}">
+                                        <span class="flex items-center text-gray-400 text-[10px] font-black uppercase ring-1 ring-gray-200 dark:ring-gray-700/50 bg-gray-50 dark:bg-gray-800 px-2.5 py-1 rounded-lg w-max">
+                                            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1.5 animate-pulse"></span>
+                                            Memuat...
+                                        </span>
+                                    </td>
+                                    <td class="px-8 py-6 text-center">
+                                        <div class="flex items-center justify-center space-x-2">
+                                            <button onclick="openRemoteGuiModal('${encodeURIComponent(JSON.stringify(olt))}')" 
+                                                class="bg-amber-600/10 hover:bg-amber-600 text-amber-600 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black transition-all shadow-sm uppercase tracking-tighter">Remote</button>
+                                            <a href="olt_devices.html" class="bg-gray-100 dark:bg-gray-700 hover:bg-blue-600 hover:text-white text-gray-700 dark:text-white px-3 py-2 rounded-xl text-[10px] font-black transition-all shadow-sm uppercase tracking-tighter">Manage</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('');
+                        }
+                    }
+                }
+
+                // 4. Process Routers List
+                if (resRouters.status === 'error') {
+                    routerContainer.innerHTML = `<div class="text-center py-20 text-red-500 italic text-xs font-bold border-2 border-dashed border-red-100 dark:border-red-900/20 rounded-3xl">Gagal memuat router: ${resRouters.message}</div>`;
+                } else {
+                    const routers = resRouters.data || [];
+                    const routerIds = routers.map(r => r.id).join(',');
+                    const oldRouterIds = dashboardRouters.map(r => r.id).join(',');
+
+                    if (isInitial || routerIds !== oldRouterIds) {
+                        dashboardRouters = routers;
+                        if (routers.length === 0) {
+                            routerContainer.innerHTML = '<div class="text-center py-20 text-gray-400 italic text-xs font-medium border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-3xl">Belum ada perangkat router.</div>';
+                        } else {
+                            routerContainer.innerHTML = routers.map(router => `
+                                <div class="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 hover:border-blue-500/50 transition-all duration-300 group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-600 transition-transform group-hover:scale-110">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                                            </div>
+                                            <div>
+                                                <h4 class="text-sm font-black text-gray-800 dark:text-gray-100">${router.name}</h4>
+                                                <p class="text-[10px] font-mono text-gray-400 font-bold">${router.ip}</p>
+                                            </div>
+                                        </div>
+                                        <span id="router-status-${router.id}" class="bg-gray-100 dark:bg-gray-800 text-gray-400 text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter ring-1 ring-gray-200 dark:ring-gray-700">Checking...</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/50">
+                                        <div class="text-center p-2 bg-white dark:bg-gray-800 rounded-lg">
+                                            <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Model</p>
+                                            <p class="text-[10px] font-bold text-gray-700 dark:text-gray-200">MikroTik</p>
+                                        </div>
+                                        <div class="text-center p-2 bg-white dark:bg-gray-800 rounded-lg">
+                                            <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">API Port</p>
+                                            <p class="text-[10px] font-bold text-gray-700 dark:text-gray-200">${router.port || '8728'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+                    }
+                }
+
+                console.log("Dashboard: Memulai update status online...");
+                updateOltStatuses();
+                updateRouterStatuses();
+                console.log("Dashboard: Sinkronisasi selesai.");
+
+            } catch (error) {
+                if (loadTimeout) clearTimeout(loadTimeout);
+                console.error("Dashboard Sync Failed:", error);
+                const tableBody = document.getElementById('dashboardOltTable');
+                if (tableBody) tableBody.innerHTML = `<tr><td colspan="4" class="px-8 py-10 text-center text-red-500 font-bold">
+                    Gagal memuat dashboard: ${error.message}<br>
+                    <span class="text-xs font-normal italic">Cek koneksi internet atau konsol browser (F12)</span>
+                </td></tr>`;
+
+                const routerContainer = document.getElementById('dashboardRouterList');
+                if (routerContainer) routerContainer.innerHTML = `<div class="p-6 text-center text-red-500 text-[10px] font-bold">
+                    Failed to sync: ${error.message}
+                </div>`;
+            }
+        }
+
+        window.onload = async () => {
+            // Wait for Supabase/APIs to be ready
+            let retry = 0;
+            while ((!window.CustomerAPI || !window.OltAPI || !window.RouterAPI) && retry < 10) {
+                await new Promise(r => setTimeout(r, 200));
+                retry++;
+            }
+
+            if (window.startMockLog) startMockLog();
+
+            // Initial load
+            await loadDashboard(true);
+
+            // Polling statuses every 10 seconds (Real-time feel)
+            setInterval(() => {
+                updateOltStatuses();
+                updateRouterStatuses();
+            }, 10000);
+
+            // Polling full data (devices/stats) every 60 seconds (Less frequent)
+            setInterval(() => loadDashboard(false), 60000);
+        };
+
+        // Remote GUI Functions
+        let currentSelectedOlt = null;
+
+        function openRemoteGuiModal(oltJson) {
+            const olt = JSON.parse(decodeURIComponent(oltJson));
+            currentSelectedOlt = olt;
+
+            const remoteGuiModal = document.getElementById('remoteGuiModal');
+            const remoteGuiContent = document.getElementById('remoteGuiContent');
+
+            document.getElementById('remoteGuiOltName').textContent = `${olt.name} (${olt.ip})`;
+
+            // Fill with saved values or defaults
+            document.getElementById('remoteGuiPublicIp').value = olt.remote_gui_ip || "103.110.10.198";
+            document.getElementById('remoteGuiDstPort').value = olt.remote_gui_port || "4001";
+
+            updateNatPreview();
+
+            remoteGuiModal.classList.remove('hidden');
+            setTimeout(() => {
+                remoteGuiContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        function closeRemoteGuiModal() {
+            const remoteGuiModal = document.getElementById('remoteGuiModal');
+            const remoteGuiContent = document.getElementById('remoteGuiContent');
+            remoteGuiContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                remoteGuiModal.classList.add('hidden');
+            }, 300);
+        }
+
+        function updateNatPreview() {
+            if (!currentSelectedOlt) return;
+            const publicIp = document.getElementById('remoteGuiPublicIp').value || "103.110.10.198";
+            const dstPort = document.getElementById('remoteGuiDstPort').value || "4001";
+            const oltIp = currentSelectedOlt.ip;
+            const config = `/ip firewall/nat/add chain=dstnat dst-address=${publicIp} protocol=tcp dst-port=${dstPort} action=dst-nat to-addresses=${oltIp} to-ports=80 comment="${currentSelectedOlt.name}"`;
+            document.getElementById('natConfigPreview').textContent = config;
+        }
+
+        function copyNatConfig() {
+            const config = document.getElementById('natConfigPreview').textContent;
+            const textToCopy = config.trim();
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    alert("MikroTik NAT Config berhasil disalin!");
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    fallbackCopyTextToClipboard(textToCopy);
+                });
+            } else {
+                fallbackCopyTextToClipboard(textToCopy);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert("MikroTik NAT Config berhasil disalin!");
+                } else {
+                    alert("Gagal menyalin teks.");
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert("Kesalahan saat menyalin: " + err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function openProtocolGui() {
+            const publicIp = document.getElementById('remoteGuiPublicIp').value;
+            const dstPort = document.getElementById('remoteGuiDstPort').value;
+            if (!publicIp || !dstPort) {
+                alert("IP Public dan Port wajib diisi!");
+                return;
+            }
+            const url = `http://${publicIp}:${dstPort}`;
+            window.open(url, '_blank');
+        }
+
+        async function saveRemoteGuiConfig() {
+            if (!currentSelectedOlt) return;
+
+            const publicIp = document.getElementById('remoteGuiPublicIp').value;
+            const dstPort = document.getElementById('remoteGuiDstPort').value;
+
+            if (!publicIp || !dstPort) {
+                alert("IP Public dan Port wajib diisi untuk menyimpan!");
+                return;
+            }
+
+            const btn = document.getElementById('saveRemoteConfigBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.textContent = "Menyimpan...";
+
+            try {
+                // Update specific fields. We need to send full object for the current API implementation
+                const updatedData = {
+                    ...currentSelectedOlt,
+                    remote_gui_ip: publicIp,
+                    remote_gui_port: parseInt(dstPort)
+                };
+
+                // Remove ID from payload as it's in the URL
+                delete updatedData.id;
+                delete updatedData.created_at;
+
+                const result = await OltAPI.updateDevice(currentSelectedOlt.id, updatedData);
+
+                if (result.status === 'success') {
+                    alert("Konfigurasi Remote GUI berhasil disimpan!");
+                    // Update local object to reflect changes without reload
+                    currentSelectedOlt.remote_gui_ip = publicIp;
+                    currentSelectedOlt.remote_gui_port = parseInt(dstPort);
+                    loadDashboard(false); // Refresh dashboard to update data
+                } else {
+                    alert("Gagal menyimpan: " + result.message);
+                }
+            } catch (error) {
+                console.error("Save config failed:", error);
+                alert("Kesalahan koneksi ke Backend.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    </script>
+
+    <!-- Remote GUI OLT Modal -->
+    <div id="remoteGuiModal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden transition-all transform scale-95 opacity-0 duration-300"
+            id="remoteGuiContent">
+            <div class="p-8 md:p-12">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-1">Remote GUI OLT</h3>
+                        <p id="remoteGuiOltName" class="text-gray-500 dark:text-gray-400 text-sm">OLT-ZTE (172.x.x.x)
+                        </p>
+                    </div>
+                    <button onclick="closeRemoteGuiModal()"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">IP Public
+                                MikroTik</label>
+                            <input type="text" id="remoteGuiPublicIp" onkeyup="updateNatPreview()"
+                                placeholder="103.110.10.198"
+                                class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 outline-none transition font-bold">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">DST
+                                Port</label>
+                            <input type="number" id="remoteGuiDstPort" onkeyup="updateNatPreview()"
+                                onchange="updateNatPreview()" placeholder="4001" value="4001"
+                                class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 outline-none transition font-bold">
+
+                            <button onclick="saveRemoteGuiConfig()" id="saveRemoteConfigBtn"
+                                class="w-full bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 border border-emerald-100 dark:border-emerald-600/20 shadow-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                                    </path>
+                                </svg>
+                                Simpan Config
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-400">MikroTik NAT
+                                Config Preview</label>
+                            <button onclick="copyNatConfig()"
+                                class="text-[10px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 00-2 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
+                                    </path>
+                                </svg>
+                                Copy Config
+                            </button>
+                        </div>
+                        <div class="bg-gray-900 rounded-2xl p-4 font-mono text-[11px] text-amber-500 border border-gray-800 break-all leading-relaxed shadow-inner overflow-hidden"
+                            id="natConfigPreview">
+                            /ip firewall/nat/add chain=dstnat dst-address=103.110.10.198 protocol=tcp dst-port=4001
+                            action=dst-nat to-addresses=172.31.31.1 to-ports=80
+                        </div>
+                    </div>
+
+                    <div class="pt-6 flex flex-col gap-3">
+                        <button onclick="openProtocolGui()"
+                            class="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-amber-500/20 transition-all active:scale-95 flex items-center justify-center gap-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9">
+                                </path>
+                            </svg>
+                            Buka Dashboard OLT GUI
+                        </button>
+                        <button onclick="closeRemoteGuiModal()"
+                            class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-3 rounded-2xl font-bold text-xs transition">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

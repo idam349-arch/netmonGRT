@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping to User - Router Monitor</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='4' width='14' height='7' rx='2' /%3E%3Crect x='5' y='13' width='14' height='7' rx='2' /%3E%3Cpath d='M8 7.5h.01M8 16.5h.01'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/diagnostic.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .ping-result-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ping-loading {
+            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0.95);
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans flex font-medium transition-colors duration-300">
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform -translate-x-full md:translate-x-0 transition-all duration-300 ease-in-out">
+        <div class="h-full flex flex-col">
+            <!-- Brand -->
+            <div class="p-4 flex items-center justify-between brand-container">
+                <div class="flex items-center overflow-hidden">
+                    <div class="p-2 bg-blue-600 rounded-lg mr-3 shadow-lg shadow-blue-500/20 shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div class="flex flex-col truncate">
+                        <span class="text-sm font-bold tracking-tight">GRT NETMON</span>
+                        <span
+                            class="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">Multi-Vendor
+                            NMS</span>
+                    </div>
+                </div>
+                <button onclick="window.toggleSidebar()"
+                    class="text-gray-400 hover:text-blue-500 transition-colors md:hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 space-y-1 mt-2 scrollbar-hide overflow-y-auto">
+                <div class="sidebar-section-header">Platform</div>
+                <a href="index.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                        </path>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <div class="sidebar-section-header">Network</div>
+                <!-- OLT Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('olt-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                                </path>
+                            </svg>
+                            <span class="font-medium truncate">OLT Perangkat</span>
+                        </div>
+                        <svg id="olt-submenu-arrow"
+                            class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div id="olt-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="onu_monitor.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Monitoring ONU</span>
+                        </a>
+                        <a href="olt_devices.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Daftar OLT</span>
+                        </a>
+                    </div>
+                </div>
+
+
+
+                <a href="customers.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                    <span>Pelanggan</span>
+                </a>
+
+                <!-- ROUTER Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('router-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                                </path>
+                            </svg>
+                            <span class="font-medium truncate">Router MikroTik</span>
+                        </div>
+                        <svg id="router-submenu-arrow"
+                            class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <div id="router-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="router_active.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>PPPOE Secrets</span>
+                        </a>
+                        <a href="router_isolir.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Data Isolir</span>
+                        </a>
+                        <a href="router_ping.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Ping to User</span>
+                        </a>
+                        <a href="router_setup.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Setup Router</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="terminal.html" target="_blank"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Terminal CLI</span>
+                </a>
+
+                <div class="sidebar-section-header">Admin</div>
+                <a href="accounts.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    <span>Manajemen Akun</span>
+                </a>
+                <a href="settings.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Section -->
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+                <div
+                    class="flex items-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all group cursor-pointer">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
+                        <span id="sidebar-user-initial">A</span>
+                    </div>
+                    <div class="ml-3 overflow-hidden flex-1 active-hide">
+                        <p id="sidebar-user-name" class="text-sm font-semibold truncate text-gray-900 dark:text-white">
+                            Admin</p>
+                        <p id="sidebar-user-role"
+                            class="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">
+                            Administrator</p>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors shrink-0"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+                <button onclick="localStorage.removeItem('olt_auth'); location.reload();"
+                    class="w-full mt-2 flex items-center justify-center space-x-2 bg-red-600/10 hover:bg-red-600 text-red-600 dark:text-red-400 hover:text-white p-2.5 rounded-xl transition border border-red-200 dark:border-red-600/20 text-sm font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+
+    <!-- Main Content -->
+    <div class="flex-1 md:ml-64 min-h-screen flex flex-col">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center">
+                    <button id="mobile-toggle" onclick="window.toggleSidebar()"
+                        class="glass-button p-2 rounded-xl transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16m-7 6h7"></path>
+                        </svg>
+                    </button>
+                    <div class="ml-4 hidden md:block">
+                        <h2 class="text-xs font-black tracking-widest text-gray-400 uppercase">Tools & Diagnostic</h2>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div
+                        class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                        <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                        <span
+                            class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">System
+                            Ready</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6 md:p-10">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl">
+                        <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-bold">Ping to User</h2>
+                        <p class="text-gray-400 text-sm mt-1">Uji konektivitas ke perangkat customer secara realtime</p>
+                    </div>
+                </div>
+
+                <button onclick="toggleRemoteModal(true)"
+                    class="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl transition-all shadow-lg shadow-orange-500/20 font-bold active:scale-95">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span>config</span>
+                </button>
+            </div>
+
+            <div class="max-w-2xl mx-auto">
+                <!-- Ping Card -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden">
+                    <div class="p-8">
+                        <div class="space-y-6 mb-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label class="text-xs font-black uppercase text-gray-400 tracking-widest px-1">Pilih
+                                        Customer</label>
+                                    <div class="relative">
+                                        <input type="text" id="customerSearch" oninput="handleSearchInput()"
+                                            onfocus="handleSearchFocus()" placeholder="Ketik nama pelanggan..."
+                                            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm">
+                                        <div id="suggestionBox"
+                                            class="hidden absolute left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto scrollbar-hide py-2">
+                                            <!-- Suggestions will be injected here -->
+                                        </div>
+                                        <div
+                                            class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-black uppercase text-gray-400 tracking-widest px-1">IP
+                                        Address</label>
+                                    <input type="text" id="targetIp" placeholder="Otomatis terisi..."
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm font-mono">
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-xs font-black uppercase text-gray-400 tracking-widest px-1">Pilih
+                                    Router (Ekseskutor Ping)</label>
+                                <div class="relative">
+                                    <select id="routerSelect"
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm">
+                                        <option value="">-- Pilih MikroTik --</option>
+                                    </select>
+                                    <div
+                                        class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 px-1 italic">*Ping akan dilakukan oleh MikroTik
+                                    terpilih ke arah IP target</p>
+                            </div>
+                        </div>
+
+                        <button id="btnPing" onclick="startPing()"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-3xl transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center space-x-3 active:scale-[0.98]">
+                            <svg id="ping-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span id="btnText" class="text-lg">Mulai Test Ping</span>
+                        </button>
+                    </div>
+
+                    <!-- Result Section -->
+                    <div id="resultArea"
+                        class="hidden border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 p-8">
+                        <div id="ping-card"
+                            class="ping-result-card relative bg-white dark:bg-gray-800 rounded-2xl p-6 border-2 border-transparent shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4">
+                                    <div id="status-icon" class="p-3 rounded-full bg-gray-100 dark:bg-gray-700">
+                                        <!-- Dynamic Icon -->
+                                    </div>
+                                    <div>
+                                        <h3 id="status-text" class="text-xl font-bold text-gray-400 italic">Menunggu...
+                                        </h3>
+                                        <p id="latency-text" class="text-sm text-gray-500 mt-1">Belum ada hasil</p>
+                                    </div>
+                                </div>
+                                <div id="status-badge"
+                                    class="hidden px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                    <!-- Dynamic Badge -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Remote ONU Card -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden mt-8">
+                    <div class="p-8">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2 bg-orange-500/10 rounded-lg">
+                                <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold">Akses Remote ONU (Web GUI)</h3>
+                        </div>
+
+                        <div class="space-y-6 mb-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label class="text-xs font-black uppercase text-gray-400 tracking-widest px-1">Pilih
+                                        Customer</label>
+                                    <div class="relative">
+                                        <input type="text" id="customerSearchRemote" oninput="handleSearchInputRemote()"
+                                            onfocus="handleSearchFocusRemote()" placeholder="Cari pelanggan..."
+                                            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition shadow-sm">
+                                        <div id="suggestionBoxRemote"
+                                            class="hidden absolute left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto scrollbar-hide py-2">
+                                            <!-- Suggestions will be injected here -->
+                                        </div>
+                                        <div
+                                            class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-black uppercase text-gray-400 tracking-widest px-1">IP
+                                        Address ONU</label>
+                                    <input type="text" id="targetIpRemote" placeholder="Otomatis..."
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition shadow-sm font-mono">
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-xs font-black uppercase text-gray-400 tracking-widest px-1">Pilih
+                                    Router MikroTik</label>
+                                <div class="relative">
+                                    <select id="routerSelectRemote"
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 text-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 transition shadow-sm">
+                                        <option value="">-- Pilih MikroTik --</option>
+                                    </select>
+                                    <div
+                                        class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-gray-400 px-1 italic">*Pastikan NAT rule "RemoteOnuGRTnetmon"
+                                    sudah ada di MikroTik terpilih</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button id="btnSetupRemote" onclick="setupRemoteOnu()"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center space-x-2 active:scale-[0.98]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                <span id="btnSetupText">1. Setup IP ke MikroTik</span>
+                            </button>
+
+                            <button id="btnOpenRemote" onclick="openRemoteOnuGui()"
+                                class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center space-x-2 active:scale-[0.98]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                <span>2. Buka Tab GUI ONU</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Remote GUI Setup Modal -->
+        <div id="remoteSetupModal" class="fixed inset-0 z-[60] hidden">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+                onclick="toggleRemoteModal(false)"></div>
+
+            <!-- Modal Content -->
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div
+                    class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl transition-all transform p-8 border border-gray-100 dark:border-gray-700">
+                    <!-- Close Button -->
+                    <button onclick="toggleRemoteModal(false)"
+                        class="absolute right-8 top-8 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    <!-- Title Section -->
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-black text-gray-900 dark:text-white mb-1">Remote GUI ONU</h2>
+                        <p id="modalOnuInfo"
+                            class="text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+                            PILIH CUSTOMER TERLEBIH DAHULU</p>
+                    </div>
+
+                    <!-- Inputs Grid -->
+                    <div class="grid grid-cols-1 gap-4 mb-6">
+                        <div class="space-y-2">
+                            <label
+                                class="block text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Remote
+                                DST Port</label>
+                            <input type="number" id="modalDstPort" oninput="updateNatPreview()" placeholder="51180"
+                                value="51180"
+                                class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition">
+                        </div>
+                    </div>
+                    <input type="hidden" id="modalOnuIp" value="172.16.100.87">
+
+
+                    <!-- Preview Section -->
+                    <div class="mb-10">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">MikroTik NAT
+                                Config Preview</span>
+                            <button onclick="copyNatConfig(this)"
+                                class="flex items-center space-x-1.5 text-orange-500 hover:text-orange-600 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                <span class="text-[10px] font-black uppercase tracking-widest">Copy Config</span>
+                            </button>
+                        </div>
+                        <div class="bg-[#111827] rounded-[1.5rem] p-6 shadow-inner font-mono text-[11px] leading-relaxed text-orange-400 border border-gray-800 break-all"
+                            id="natConfigPreview">
+                            /ip firewall/nat/add chain=dstnat dst-address=192.168.1.12 protocol=tcp dst-port=4001
+                            action=dst-nat to-addresses=41.216.191.183 to-ports=80 comment=RemoteOnuGRTnetmon
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button onclick="saveRemoteConfig()"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-[1.5rem] transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                            Simpan
+                        </button>
+                        <button onclick="toggleRemoteModal(false)"
+                            class="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold py-4 rounded-[1.5rem] transition-all hover:bg-gray-100 dark:hover:bg-gray-800">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let customers = [];
+        let selectedRouterId = null;
+
+        async function loadCustomers() {
+            try {
+                const res = await CustomerAPI.listCustomers();
+                if (res.status === 'success') {
+                    customers = res.data || [];
+                } else {
+                    console.error("Gagal memuat customer:", res.message);
+                }
+            } catch (error) {
+                console.error("Load customers failed:", error);
+            }
+        }
+
+        async function loadRouters() {
+            try {
+                const res = await RouterAPI.listRouters();
+                if (res.status === 'success' && res.data) {
+                    const select = document.getElementById('routerSelect');
+                    const selectRemote = document.getElementById('routerSelectRemote');
+                    res.data.forEach(router => {
+                        const opt = document.createElement('option');
+                        opt.value = router.id;
+                        opt.dataset.ip = router.ip;
+                        opt.textContent = `${router.name} (${router.ip})`;
+                        select.appendChild(opt);
+
+                        const optRemote = opt.cloneNode(true);
+                        selectRemote.appendChild(optRemote);
+                    });
+                }
+            } catch (error) {
+                console.error("Load routers failed:", error);
+            }
+        }
+
+        function handleSearchFocus() {
+            const search = document.getElementById('customerSearch').value;
+            if (search.length > 0) handleSearchInput();
+        }
+
+        function handleSearchInput() {
+            const search = document.getElementById('customerSearch').value.toLowerCase();
+            const box = document.getElementById('suggestionBox');
+
+            if (search.length === 0) {
+                box.classList.add('hidden');
+                return;
+            }
+
+            const filtered = customers.filter(c =>
+                c.name.toLowerCase().includes(search) ||
+                (c.remote_address && c.remote_address.includes(search))
+            ).slice(0, 10); // Limit to 10 suggestions
+
+            if (filtered.length > 0) {
+                box.innerHTML = filtered.map(c => `
+                        <div onclick="selectCustomer('${c.name}', '${c.remote_address || ''}', '${c.router || ''}')" 
+                             class="px-5 py-3 hover:bg-blue-600/10 dark:hover:bg-blue-400/10 cursor-pointer transition flex flex-col border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                            <span class="font-bold text-sm">${c.name}</span>
+                            <span class="text-[10px] text-gray-400 font-mono">${c.remote_address || 'No IP'}</span>
+                        </div>
+                    `).join('');
+                box.classList.remove('hidden');
+            } else {
+                box.innerHTML = '<div class="px-5 py-3 text-xs text-gray-500 italic text-center">Tidak ada hasil</div>';
+                box.classList.remove('hidden');
+            }
+        }
+
+        function selectCustomer(name, ip, routerId) {
+            document.getElementById('customerSearch').value = name;
+            document.getElementById('targetIp').value = ip;
+            if (routerId) {
+                document.getElementById('routerSelect').value = routerId;
+            }
+            document.getElementById('suggestionBox').classList.add('hidden');
+        }
+
+        // Close suggestion box when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.relative')) {
+                document.getElementById('suggestionBox').classList.add('hidden');
+                document.getElementById('suggestionBoxRemote').classList.add('hidden');
+            }
+        });
+
+        async function startPing() {
+            const ip = document.getElementById('targetIp').value;
+            const routerId = document.getElementById('routerSelect').value;
+
+            if (!ip) {
+                alert('Masukkan IP Address target!');
+                return;
+            }
+            if (!routerId) {
+                alert('Pilih Router MikroTik sebagai eksekutor ping!');
+                return;
+            }
+
+            const btn = document.getElementById('btnPing');
+            const btnText = document.getElementById('btnText');
+            const resultArea = document.getElementById('resultArea');
+            const card = document.getElementById('ping-card');
+            const iconContainer = document.getElementById('status-icon');
+            const statusText = document.getElementById('status-text');
+            const latencyText = document.getElementById('latency-text');
+            const badge = document.getElementById('status-badge');
+
+            // UI State: Loading
+            btn.disabled = true;
+            btn.classList.replace('bg-blue-600', 'bg-gray-400');
+            btnText.textContent = "Sedang Ping...";
+            resultArea.classList.remove('hidden');
+
+            card.className = "ping-result-card relative bg-white dark:bg-gray-800 rounded-2xl p-6 border-2 border-blue-500 shadow-xl";
+            iconContainer.innerHTML = '<div class="ping-loading w-4 h-4 bg-blue-500 rounded-full"></div>';
+            statusText.textContent = "Mengecek Koneksi...";
+            statusText.className = "text-xl font-bold";
+            latencyText.textContent = "Harap tunggu sejenak";
+            badge.classList.add('hidden');
+
+            try {
+                const res = await RouterAPI.ping(ip, routerId);
+
+                if (res.status === 'success') {
+                    // Success / Online
+                    card.classList.replace('border-blue-500', 'border-green-500');
+                    iconContainer.innerHTML = '<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                    statusText.textContent = "USER ONLINE";
+                    statusText.classList.add('text-green-600', 'dark:text-green-400');
+                    latencyText.innerHTML = `Latency: ${res.latency}<br><span class="text-[10px] opacity-70 italic">via ${res.identity || 'Unknown'} (${res.host || 'N/A'})</span>`;
+                    badge.textContent = "CONNECTED";
+                    badge.className = "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400";
+                } else {
+                    // Timeout / Offline
+                    card.classList.replace('border-blue-500', 'border-red-500');
+                    iconContainer.innerHTML = '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
+                    statusText.textContent = "USER OFFLINE";
+                    statusText.classList.add('text-red-600', 'dark:text-red-400');
+                    latencyText.innerHTML = `${res.message || "Request Timed Out"}<br><span class="text-[10px] opacity-70 italic">via ${res.identity || 'Unknown'} (${res.host || 'N/A'})</span>`;
+                    badge.textContent = "TIMEOUT";
+                    badge.className = "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400";
+                }
+                badge.classList.remove('hidden');
+
+            } catch (error) {
+                statusText.textContent = "ERROR KONEKSI";
+                latencyText.textContent = error.message;
+            } finally {
+                btn.disabled = false;
+                btn.classList.replace('bg-gray-400', 'bg-blue-600');
+                btnText.textContent = "Ulangi Test Ping";
+            }
+        }
+
+        // Remote ONU Logic
+        function handleSearchFocusRemote() {
+            const search = document.getElementById('customerSearchRemote').value;
+            if (search.length > 0) handleSearchInputRemote();
+        }
+
+        function handleSearchInputRemote() {
+            const search = document.getElementById('customerSearchRemote').value.toLowerCase();
+            const box = document.getElementById('suggestionBoxRemote');
+
+            if (search.length === 0) {
+                box.classList.add('hidden');
+                return;
+            }
+
+            const filtered = customers.filter(c =>
+                c.name.toLowerCase().includes(search) ||
+                (c.remote_address && c.remote_address.includes(search))
+            ).slice(0, 10);
+
+            if (filtered.length > 0) {
+                box.innerHTML = filtered.map(c => `
+                        <div onclick="selectCustomerRemote('${c.name}', '${c.remote_address || ''}', '${c.router || ''}')" 
+                             class="px-5 py-3 hover:bg-orange-600/10 dark:hover:bg-orange-400/10 cursor-pointer transition flex flex-col border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                            <span class="font-bold text-sm">${c.name}</span>
+                            <span class="text-[10px] text-gray-400 font-mono">${c.remote_address || 'No IP'}</span>
+                        </div>
+                    `).join('');
+                box.classList.remove('hidden');
+            } else {
+                box.innerHTML = '<div class="px-5 py-3 text-xs text-gray-500 italic text-center">Tidak ada hasil</div>';
+                box.classList.remove('hidden');
+            }
+        }
+
+        function selectCustomerRemote(name, ip, routerId) {
+            document.getElementById('customerSearchRemote').value = name;
+            document.getElementById('targetIpRemote').value = ip;
+            if (routerId) {
+                document.getElementById('routerSelectRemote').value = routerId;
+            }
+            document.getElementById('suggestionBoxRemote').classList.add('hidden');
+        }
+
+        async function setupRemoteOnu() {
+            const ip = document.getElementById('targetIpRemote').value;
+            const routerId = document.getElementById('routerSelectRemote').value;
+
+            if (!ip) {
+                alert('Pilih customer/IP target!');
+                return;
+            }
+            if (!routerId) {
+                alert('Pilih Router MikroTik pelaksana!');
+                return;
+            }
+
+            const btn = document.getElementById('btnSetupRemote');
+            const btnText = document.getElementById('btnSetupText');
+            const port = document.getElementById('modalDstPort').value || localStorage.getItem('remote_onu_port') || "51180";
+
+            // UI Loading
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            const originalText = btnText.textContent;
+            btnText.textContent = "Sedang Setup...";
+
+            try {
+                // Send dst_port to backend so it knows what port to search for in NAT
+                const res = await RouterAPI.setupRemoteOnu(ip, routerId, port);
+
+                if (res.status === 'success') {
+                    // Update the local storage port if different, but primarily we rely on res.dst_port
+                    window.lastRemoteInfo = {
+                        ip: res.router_ip,
+                        port: res.dst_port
+                    };
+
+                    btnText.textContent = "Setup Berhasil!";
+                    btn.classList.remove('bg-blue-600');
+                    btn.classList.add('bg-green-600');
+                    setTimeout(() => {
+                        btnText.textContent = originalText;
+                        btn.classList.remove('bg-green-600');
+                        btn.classList.add('bg-blue-600');
+                    }, 3000);
+                } else {
+                    const errorMsg = res.message || "Gagal tanpa pesan";
+                    alert("Gagal setup Remote ONU:\n" + errorMsg);
+                }
+            } catch (error) {
+                console.error("Remote ONU failed:", error);
+                alert("Error: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                if (btnText.textContent === "Sedang Setup...") {
+                    btnText.textContent = originalText;
+                }
+            }
+        }
+
+        function openRemoteOnuGui() {
+            const select = document.getElementById('routerSelectRemote');
+            const selectedOption = select.options[select.selectedIndex];
+
+            if (!selectedOption || !selectedOption.value) {
+                alert('Pilih Router MikroTik terlebih dahulu!');
+                return;
+            }
+
+            const routerIp = selectedOption.dataset.ip;
+
+            // Check if we have dynamic info from the last successful setup
+            let port = "51180";
+            if (window.lastRemoteInfo && window.lastRemoteInfo.ip === routerIp) {
+                port = window.lastRemoteInfo.port;
+            } else {
+                // Fallback to local storage or default
+                port = localStorage.getItem('remote_onu_port') || "51180";
+            }
+
+            const url = `http://${routerIp}:${port}`;
+            window.open(url, '_blank');
+        }
+
+        window.onload = () => {
+            loadCustomers();
+            loadRouters();
+        };
+    </script>
+    <script>
+        function toggleRemoteModal(show) {
+            const modal = document.getElementById('remoteSetupModal');
+            if (show) {
+                modal.classList.remove('hidden');
+                // Pre-fill from existing inputs
+                const currentIp = document.getElementById('targetIpRemote').value;
+                const currentName = document.getElementById('customerSearchRemote').value;
+                if (currentIp) {
+                    document.getElementById('modalOnuInfo').textContent = `${currentName} (${currentIp})`;
+                    document.getElementById('modalOnuIp').value = currentIp;
+                }
+
+                // Load saved port if exists
+                const savedPort = localStorage.getItem('remote_onu_port');
+                if (savedPort) {
+                    document.getElementById('modalDstPort').value = savedPort;
+                }
+
+                updateNatPreview();
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function updateNatPreview() {
+            const dstPort = document.getElementById('modalDstPort').value || '51180';
+            const onuIp = document.getElementById('modalOnuIp').value || '172.16.100.87';
+
+            const config = `/ip firewall/nat/add chain=dstnat protocol=tcp dst-port=${dstPort} action=dst-nat to-addresses=${onuIp} to-ports=80 comment=RemoteOnuGRTnetmon`;
+            document.getElementById('natConfigPreview').textContent = config;
+        }
+
+        function saveRemoteConfig() {
+            const port = document.getElementById('modalDstPort').value;
+            localStorage.setItem('remote_onu_port', port);
+            alert("Konfigurasi port berhasil disimpan!");
+            toggleRemoteModal(false);
+        }
+
+        async function copyNatConfig(btn) {
+            const config = document.getElementById('natConfigPreview').textContent;
+            const textToCopy = config.trim();
+
+            const onSuccess = () => {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<span class="text-green-500 text-[10px] font-black uppercase tracking-widest">COPIED!</span>';
+                setTimeout(() => btn.innerHTML = original, 2000);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    onSuccess();
+                } catch (err) {
+                    console.error('Failed to copy!', err);
+                    fallbackCopyTextToClipboard(textToCopy, onSuccess);
+                }
+            } else {
+                fallbackCopyTextToClipboard(textToCopy, onSuccess);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text, callback) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful && callback) {
+                    callback();
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+    </script>
+    </div>
+</body>
+
+</html>

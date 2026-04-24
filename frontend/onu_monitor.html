@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZTE Monitor - Specialized NMS</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='4' width='14' height='7' rx='2' /%3E%3Crect x='5' y='13' width='14' height='7' rx='2' /%3E%3Cpath d='M8 7.5h.01M8 16.5h.01'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/diagnostic.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans flex font-medium transition-colors duration-300">
+
+    <!-- Toggle Button (Visible for Mobile and when Desktop Sidebar is Hidden) -->
+
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform -translate-x-full md:translate-x-0 transition-all duration-300 ease-in-out">
+        <div class="h-full flex flex-col">
+            <!-- Brand -->
+            <div class="p-4 flex items-center justify-between brand-container">
+                <div class="flex items-center overflow-hidden">
+                    <div class="p-2 bg-blue-600 rounded-lg mr-3 shadow-lg shadow-blue-500/20 shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div class="flex flex-col truncate">
+                        <span class="text-sm font-bold tracking-tight">GRT NETMON</span>
+                        <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">Multi-Vendor NMS</span>
+                    </div>
+                </div>
+                <button onclick="window.toggleSidebar()" class="text-gray-400 hover:text-blue-500 transition-colors md:hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 space-y-1 mt-2 scrollbar-hide overflow-y-auto">
+                <div class="sidebar-section-header">Platform</div>
+                <a href="index.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <div class="sidebar-section-header">Network</div>
+                <!-- OLT Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('olt-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            <span class="font-medium truncate">OLT Perangkat</span>
+                        </div>
+                        <svg id="olt-submenu-arrow" class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="olt-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="onu_monitor.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Monitoring ONU</span>
+                        </a>
+                        <a href="olt_devices.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Daftar OLT</span>
+                        </a>
+                    </div>
+                </div>
+
+
+
+                <a href="customers.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    <span>Pelanggan</span>
+                </a>
+
+                <!-- ROUTER Dropdown -->
+                <div class="dropdown-container">
+                    <button onclick="window.toggleDropdown('router-submenu')"
+                        class="w-full flex items-center justify-between p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white rounded-lg transition group">
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                            </svg>
+                            <span class="font-medium truncate">Router MikroTik</span>
+                        </div>
+                        <svg id="router-submenu-arrow" class="dropdown-arrow w-4 h-4 transition-transform duration-200 shrink-0"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="router-submenu" class="dropdown-menu hidden mt-0.5 space-y-0.5">
+                        <a href="router_active.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>PPPOE Secrets</span>
+                        </a>
+                        <a href="router_isolir.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Data Isolir</span>
+                        </a>
+                        <a href="router_ping.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Ping to User</span>
+                        </a>
+                        <a href="router_setup.html"
+                            class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 px-4 rounded-lg transition text-sm font-medium">
+                            <div class="w-1.5 h-1.5 rounded-full bg-current opacity-40 shrink-0"></div>
+                            <span>Setup Router</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="terminal.html" target="_blank"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Terminal CLI</span>
+                </a>
+
+                <div class="sidebar-section-header">Admin</div>
+                <a href="accounts.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span>Manajemen Akun</span>
+                </a>
+                <a href="settings.html"
+                    class="flex items-center space-x-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white p-2.5 rounded-lg transition font-medium">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+
+            <!-- User Profile Section -->
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+                <div class="flex items-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all group cursor-pointer">
+                    <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
+                        <span id="sidebar-user-initial">A</span>
+                    </div>
+                    <div class="ml-3 overflow-hidden flex-1 active-hide">
+                        <p id="sidebar-user-name" class="text-sm font-semibold truncate text-gray-900 dark:text-white">Admin</p>
+                        <p id="sidebar-user-role" class="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Administrator</p>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+                <button onclick="localStorage.removeItem('olt_auth'); location.reload();"
+                    class="w-full mt-2 flex items-center justify-center space-x-2 bg-red-600/10 hover:bg-red-600 text-red-600 dark:text-red-400 hover:text-white p-2.5 rounded-xl transition border border-red-200 dark:border-red-600/20 text-sm font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Dependencies -->
+
+
+    <!-- Main Content -->
+    <div class="flex-1 md:ml-64 min-h-screen flex flex-col">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center">
+                    <button id="mobile-toggle" onclick="window.toggleSidebar()"
+                        class="glass-button p-2 rounded-xl transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16m-7 6h7"></path>
+                        </svg>
+                    </button>
+                    <div class="ml-4 hidden md:block">
+                        <h2 class="text-xs font-black tracking-widest text-gray-400 uppercase">ONU Monitoring</h2>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div
+                        class="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                        <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                        <span
+                            class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Diagnostic
+                            Active</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6 md:p-10">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl">
+                        <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-bold tracking-tight">ZTE OLT <span
+                                class="text-blue-500">MONITORING</span></h2>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Real-time signal analysis & CLI
+                            diagnostic
+                            dashboard</p>
+                    </div>
+                </div>
+            </div> <!-- Diagnostic Status Bar -->
+            <div
+                class="mb-6 h-14 flex items-center px-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800/20 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">ZTE
+                        Diagnostic Mode Active</span>
+                </div>
+            </div> <!-- Desktop Glassmorphism Filter Header -->
+            <div
+                class="mb-8 p-3 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-[2.5rem] shadow-sm">
+                <div class="flex flex-col md:flex-row items-center gap-3 px-2">
+                    <!-- Left: OLT Selector -->
+                    <div class="w-full md:w-auto flex-1">
+                        <div class="relative">
+                            <select id="oltFilter"
+                                class="w-full md:w-80 h-14 bg-white dark:bg-gray-900 border-2 border-blue-500/10 hover:border-blue-500/30 rounded-2xl px-5 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer font-black text-blue-600 dark:text-blue-400 shadow-sm appearance-none">
+                                <option value="">-- Pilih OLT ZTE --</option>
+                            </select>
+                            <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="triggerTargetedScan()" class="h-14 w-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95 shrink-0" title="Scan">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2-Column Dashboard Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                <!-- Left Side: Command Builder -->
+                <div
+                    class="lg:col-span-5 xl:col-span-4 bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-200 dark:border-gray-700 shadow-xl dark:shadow-2xl overflow-hidden self-start transition-all lg:sticky lg:top-6">
+                    <div
+                        class="p-4 md:p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+                        <div
+                            class="flex items-center gap-1 bg-white dark:bg-gray-900 p-1 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-x-auto no-scrollbar max-w-full">
+                            <button onclick="toggleCard('builder')" id="tabBuilder"
+                                class="whitespace-nowrap px-3 md:px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-xl transition-all bg-blue-600 text-white shadow-lg shadow-blue-500/20">Diag</button>
+                            <button onclick="toggleCard('register')" id="tabRegister"
+                                class="whitespace-nowrap px-3 md:px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-xl transition-all text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">Prov</button>
+                            <button onclick="toggleCard('edit')" id="tabEdit"
+                                class="whitespace-nowrap px-3 md:px-4 py-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-xl transition-all text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">Edit</button>
+                        </div>
+                        <div id="vendorBadge"
+                            class="text-[9px] font-black bg-emerald-500 text-white px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-emerald-500/20 whitespace-nowrap">
+                            ZTE READY</div>
+                    </div>
+
+                    <div id="registerOnuCard" class="hidden p-4 md:p-8 space-y-8">
+                        <!-- Section 1: Discovery -->
+                        <div
+                            class="space-y-5 p-5 bg-blue-50/50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-800/20">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-1.5 h-4 bg-blue-500 rounded-full"></div>
+                                    <h4
+                                        class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                        Scan Discovery</h4>
+                                </div>
+                                <button onclick="scanUnconfigured()" id="regScanBtn"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Scan</button>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Registration Data -->
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">PON
+                                        Interface</label>
+                                    <input type="text" id="regPon" placeholder="1/1/1" oninput="updateRegPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-mono font-bold">
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Serial
+                                        Number (SN)</label>
+                                    <input type="text" id="regSn" placeholder="ZTEGC..." oninput="updateRegPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all uppercase font-mono font-bold">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Proposed
+                                        ONU ID</label>
+                                    <input type="number" id="regOnuId" placeholder="6" oninput="updateRegPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-mono font-bold">
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">ONU
+                                        Type (Model)</label>
+                                    <input type="text" id="regOnuType" placeholder="F609" value="F609"
+                                        oninput="updateRegPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">PPPoE User (Optional)</label>
+                                    <input type="text" id="regPppoeUser" placeholder="User" oninput="updateRegPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold">
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Password (Optional)</label>
+                                    <input type="text" id="regPppoePass" placeholder="Pass" oninput="updateRegPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold">
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">VLAN Profile (Optional)</label>
+                                    <input type="text" id="regVlanProfile" placeholder="MGMT-ONU" oninput="updateRegPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold">
+                                </div>
+                            </div>
+
+                            <div class="space-y-4 pt-2">
+                                <!-- Draft 1 -->
+                                <div class="group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label
+                                            class="text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Config
+                                            Template (Draft 1: Register)</label>
+                                        <button onclick="copyToClipboard('regScriptDraft', this)"
+                                            class="text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-400 flex items-center gap-1 transition-all mr-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
+                                                </path>
+                                            </svg>
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <div class="bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-inner">
+                                        <pre id="regScriptDraft" contenteditable="true"
+                                            oninput="this.dataset.manual='true'"
+                                            class="text-sm text-emerald-400 font-mono leading-tight max-h-32 overflow-y-auto custom-scrollbar focus:outline-none">! Script akan muncul disini...</pre>
+                                    </div>
+                                </div>
+
+                                <!-- Draft 2 -->
+                                <div class="group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label
+                                            class="text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Config
+                                            Template (Draft 2: Service Config)</label>
+                                        <button onclick="copyToClipboard('regScriptDraft2', this)"
+                                            class="text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-400 flex items-center gap-1 transition-all mr-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
+                                                </path>
+                                            </svg>
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <div class="bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-inner">
+                                        <pre id="regScriptDraft2" contenteditable="true"
+                                            oninput="this.dataset.manual='true'"
+                                            class="text-sm text-emerald-400 font-mono leading-tight max-h-48 overflow-y-auto custom-scrollbar focus:outline-none">! Script akan muncul disini...</pre>
+                                    </div>
+                                </div>
+
+                                <!-- Draft 3 -->
+                                <div class="group">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label
+                                            class="text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Config
+                                            Template (Draft 3: OMCI & Service Port)</label>
+                                        <button onclick="copyToClipboard('regScriptDraft3', this)"
+                                            class="text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-400 flex items-center gap-1 transition-all mr-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
+                                                </path>
+                                            </svg>
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <div class="bg-gray-900 rounded-2xl p-4 border border-gray-700 shadow-inner">
+                                        <pre id="regScriptDraft3" contenteditable="true"
+                                            oninput="this.dataset.manual='true'"
+                                            class="text-sm text-emerald-400 font-mono leading-tight max-h-48 overflow-y-auto custom-scrollbar focus:outline-none">! Script akan muncul disini...</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons Row -->
+                        <div class="space-y-4 pt-4">
+                            <button onclick="updateRegPreview(true)" id="regUpdateBtn"
+                                class="w-full h-14 bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-blue-500/30 hover:border-blue-500 hover:bg-blue-500/5 text-blue-600 dark:text-blue-400 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3 shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                    </path>
+                                </svg>
+                                Update / Reset Templates
+                            </button>
+
+                            <button onclick="executeRegistration()" id="regExecuteBtn"
+                                class="w-full h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-3">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                REGISTRASI SEKARANG
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Closing registerOnuCard -->
+
+                    <div id="editOnuCard" class="hidden p-4 md:p-8 space-y-8">
+                        <!-- Section 1: Target Selector -->
+                        <div
+                            class="p-6 bg-gray-50/50 dark:bg-gray-900/10 rounded-3xl border border-blue-100 dark:border-blue-800/20 space-y-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-1.5 h-4 bg-blue-500 rounded-full"></div>
+                                <h4
+                                    class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                    Target Selector</h4>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">PON
+                                        Interface</label>
+                                    <input type="text" id="editPon" placeholder="1/1/1" oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-mono font-bold">
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">ONU
+                                        ID</label>
+                                    <input type="number" id="editOnuId" placeholder="10" oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-mono font-bold">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Action Selection -->
+                        <div class="space-y-4">
+                            <label class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Pilih
+                                Perintah (Edit Action)</label>
+                            <select id="editActionSelector" onchange="toggleEditParams()"
+                                class="w-full h-16 bg-white dark:bg-gray-900 border-2 border-blue-500/5 focus:border-blue-500 rounded-2xl px-5 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer font-black text-gray-700 dark:text-gray-200 shadow-sm appearance-none">
+                                <option value="RENAME">Edit Nama ONU (Description)</option>
+                                <option value="REPLACE">Ganti ONU (Replace SN)</option>
+                                <option value="PPPOE">Update PPPoE / WAN IP</option>
+                                <option value="VLAN">Update VLAN Configuration</option>
+                                <option value="TCONT_GEMPORT">Edit Tcont & Gemport</option>
+                                <option value="MAINTENANCE">Maintenance (Reboot/Reset/Delete)</option>
+                            </select>
+                        </div>
+
+                        <!-- Section 3: Dynamic Parameters -->
+                        <div id="editParamsContainer" class="space-y-6">
+                            <!-- Rename Params -->
+                            <div id="paramRename" class="edit-param-group">
+                                <label
+                                    class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3 ml-1">Parameter:
+                                    Nama Baru</label>
+                                <input type="text" id="editOnuName" placeholder="HOTEL-NEW-NAME"
+                                    oninput="updateEditPreview()"
+                                    class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold">
+                            </div>
+
+                            <!-- Replace Params -->
+                            <div id="paramReplace" class="edit-param-group hidden">
+                                <label
+                                    class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3 ml-1">Parameter:
+                                    Serial Number Baru</label>
+                                <input type="text" id="editNewSn" placeholder="ZTEGC..." oninput="updateEditPreview()"
+                                    class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-mono font-bold uppercase">
+                            </div>
+
+                            <!-- PPPoE Params -->
+                            <div id="paramPppoe" class="edit-param-group hidden space-y-4">
+                                <label
+                                    class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Parameter:
+                                    PPPoE Credentials</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="text" id="editPppoeUser" placeholder="Username PPPoE"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                    <input type="text" id="editPppoePass" placeholder="Password PPPoE"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                </div>
+                                <input type="text" id="editVlanProfile" placeholder="VLAN Profile (e.g. MGMT-ONU)"
+                                    oninput="updateEditPreview()"
+                                    class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                            </div>
+
+                            <!-- VLAN Params -->
+                            <div id="paramVlan" class="edit-param-group hidden space-y-4">
+                                <label
+                                    class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Parameter:
+                                    VLAN Configuration</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="number" id="vlanOltInt" placeholder="VLAN Int (OLT)"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                    <input type="number" id="vlanOltMgmt" placeholder="VLAN Mgmt (OLT)"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="number" id="vlanOnuInt" placeholder="VLAN Int (ONU)"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                    <input type="number" id="vlanOnuMgmt" placeholder="VLAN Mgmt (ONU)"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                </div>
+                            </div>
+
+                            <!-- Tcont/Gemport Params -->
+                            <div id="paramTcont" class="edit-param-group hidden space-y-4">
+                                <label
+                                    class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Parameter:
+                                    Tcont & Gemport</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="number" id="editTcontId" placeholder="Tcont ID" value="1"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                    <input type="text" id="editTcontProfile" placeholder="Tcont Profile"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="number" id="editGemportId" placeholder="Gemport ID" value="1"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                    <input type="text" id="editTrafficLimit" placeholder="Traffic Limit (DS)"
+                                        oninput="updateEditPreview()"
+                                        class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                </div>
+                            </div>
+
+                            <!-- Maintenance Params -->
+                            <div id="paramMaintenance" class="edit-param-group hidden">
+                                <label
+                                    class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3 ml-1">Pilih
+                                    Jenis Maintenance</label>
+                                <select id="editMaintenanceType" onchange="updateEditPreview()"
+                                    class="w-full h-14 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 outline-none transition-all font-bold">
+                                    <option value="reboot">Reboot ONU</option>
+                                    <option value="reset">Reset Factory (Restore)</option>
+                                    <option value="delete">Hapus ONU (Unconfigure)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Unified Preview -->
+                        <div class="space-y-3">
+                            <label
+                                class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Preview
+                                Template (Draft)</label>
+                            <div
+                                class="bg-gray-900 rounded-[2rem] p-6 border border-gray-700 shadow-2xl relative overflow-hidden group">
+                                <div
+                                    class="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 transition-opacity">
+                                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                </div>
+                                <pre id="editScriptDraft" contenteditable="true"
+                                    class="text-sm text-emerald-400 font-mono leading-relaxed max-h-48 overflow-y-auto custom-scrollbar focus:outline-none">! Pilih perintah untuk melihat script...</pre>
+                            </div>
+                        </div>
+
+                        <!-- Section 5: Unified Action Button -->
+                        <button onclick="handleEditExecute()" id="editExecuteBtn"
+                            class="w-full h-20 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black uppercase tracking-[0.25em] transition-all shadow-xl shadow-blue-500/25 active:scale-[0.98] flex items-center justify-center gap-4 group">
+                            <div class="p-2 bg-white/10 rounded-xl group-hover:scale-110 transition-transform">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            JALANKAN PERINTAH EDIT
+                        </button>
+                    </div> <!-- Closing editOnuCard -->
+
+                    <div id="commandBuilderCard" class="p-4 md:p-8 space-y-8">
+                        <!-- Section 1: Interface Settings -->
+                        <div
+                            class="space-y-5 p-5 bg-gray-50/50 dark:bg-gray-900/30 rounded-3xl border border-gray-100 dark:border-gray-800/50">
+                            <div class="flex items-center gap-2 mb-1">
+                                <div class="w-1.5 h-4 bg-blue-500 rounded-full"></div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest text-gray-500">Interface
+                                    Settings</h4>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Tipe
+                                    Interface</label>
+                                <select id="builderInterfaceType" onchange="updatePortOptions()"
+                                    class="w-full h-14 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer font-bold shadow-sm">
+                                    <option value="gpon-olt">GPON-OLT (Downlink)</option>
+                                    <option value="epon-olt">EPON-OLT (Downlink)</option>
+                                    <option value="xgei">XGEI (Uplink 10G)</option>
+                                    <option value="gei">GEI (Uplink 1G)</option>
+                                </select>
+                            </div>
+
+                            <div id="interfaceSelectionArea" class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Card
+                                        (Slot)</label>
+                                    <select id="builderCardFilter"
+                                        class="w-full h-14 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer font-bold shadow-sm">
+                                        <option value="1/1">1/1</option>
+                                        <option value="1/2">1/2</option>
+                                        <option value="1/3">1/3</option>
+                                        <option value="1/4">1/4</option>
+                                        <option value="1/5">1/5</option>
+                                        <option value="1/6">1/6</option>
+                                        <option value="1/7">1/7</option>
+                                        <option value="1/8">1/8</option>
+                                        <option value="1/9">1/9</option>
+                                        <option value="1/10">1/10</option>
+                                        <option value="1/11">1/11</option>
+                                        <option value="1/12">1/12</option>
+                                        <option value="1/13">1/13</option>
+                                        <option value="1/14">1/14</option>
+                                        <option value="1/15">1/15</option>
+                                        <option value="1/16">1/16</option>
+                                        <option value="1/17">1/17</option>
+                                        <option value="1/18">1/18</option>
+                                        <option value="1/19">1/19</option>
+                                        <option value="1/20">1/20</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Port
+                                        PON</label>
+                                    <select id="builderPortFilter"
+                                        class="w-full h-14 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer font-bold shadow-sm">
+                                        <option value="1">PON 1</option>
+                                        <option value="2">PON 2</option>
+                                        <option value="3">PON 3</option>
+                                        <option value="4">PON 4</option>
+                                        <option value="5">PON 5</option>
+                                        <option value="6">PON 6</option>
+                                        <option value="7">PON 7</option>
+                                        <option value="8">PON 8</option>
+                                        <option value="9">PON 9</option>
+                                        <option value="10">PON 10</option>
+                                        <option value="11">PON 11</option>
+                                        <option value="12">PON 12</option>
+                                        <option value="13">PON 13</option>
+                                        <option value="14">PON 14</option>
+                                        <option value="15">PON 15</option>
+                                        <option value="16">PON 16</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Target Parameters -->
+                        <div class="space-y-5">
+                            <div class="flex items-center gap-2">
+                                <div class="w-1.5 h-4 bg-emerald-500 rounded-full"></div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest text-gray-500">Target
+                                    Parameters
+                                </h4>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="group">
+                                        <label
+                                            class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1 group-focus-within:text-blue-500 transition-colors">ONU
+                                            Index</label>
+                                        <div class="relative">
+                                            <input type="number" id="builderOnuId" placeholder="1" min="1" max="128"
+                                                class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl pl-12 pr-4 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-mono font-bold hover:border-blue-300 dark:hover:border-blue-800">
+                                            <div
+                                                class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500/40 group-focus-within:text-blue-500 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2.5" d="M7 20l4-16m2 16l4-16"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="group">
+                                        <label
+                                            class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1 group-focus-within:text-blue-500 transition-colors">VLAN
+                                            ID</label>
+                                        <div class="relative">
+                                            <input type="number" id="builderVlanId" placeholder="100"
+                                                class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl pl-12 pr-4 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-mono font-bold hover:border-blue-300 dark:hover:border-blue-800">
+                                            <div
+                                                class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500/40 group-focus-within:text-blue-500 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="group">
+                                    <label
+                                        class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1 group-focus-within:text-blue-500 transition-colors">Serial
+                                        (SN)</label>
+                                    <div class="relative">
+                                        <input type="text" id="builderOnuSn" placeholder="ZTEG..."
+                                            class="w-full h-14 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl pl-12 pr-4 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-mono font-bold uppercase hover:border-blue-300 dark:hover:border-blue-800">
+                                        <div
+                                            class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500/40 group-focus-within:text-blue-500 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Template Selection -->
+                        <div class="space-y-4">
+                            <label class="block text-[9px] font-bold uppercase tracking-widest text-gray-400 ml-1">Pilih
+                                Perintah (Template)</label>
+                            <select id="builderCommandTemplate"
+                                class="w-full h-16 bg-white dark:bg-gray-900 border-2 border-blue-500/5 focus:border-blue-500 rounded-2xl px-5 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer font-black text-gray-700 dark:text-gray-200 shadow-sm appearance-none">
+                                <option value="STATE">Cek Status ONU (State)</option>
+                                <option value="DETAIL">Cek Detail ONU (Full Info)</option>
+                                <option value="SIGNAL">Cek Sinyal ONU (Rx Power)</option>
+                                <option value="PON_SIGNAL">Cek Sinyal Pon (All ONU)</option>
+                                <option value="MAC">Cek MAC ONU (Bridge Table)</option>
+                                <option value="MAC_VLAN">Cek MAC by VLAN (Global)</option>
+                                <option value="PORT_RUNNING">Cek Running Config (Port)</option>
+                                <option value="INTERFACE_STATUS">Cek Status UP/DOWN (Interface)</option>
+                                <option value="PON_SN_LIST">Cek List SN Semua ONU (di PON)</option>
+                                <option value="ONU_RUNNING">Cek Config VLAN/Service (OMCI)</option>
+                                <option value="UNCFG">Cek ONU Belum Reg (Uncfg)</option>
+                                <option value="IP_HOST">Cek IP ONU (Host)</option>
+                                <option value="ETH_STATUS">Cek Port LAN ONU (ETH)</option>
+                                <option value="BY_SN">Cek Letak ONU (by SN)</option>
+                                <option value="ADD_VLAN">Tambah VLAN ke Interface (Uplink)</option>
+                            </select>
+                        </div>
+
+                        <!-- Execute Button group -->
+                        <div class="space-y-4 pt-2">
+                            <button onclick="runTemplateCommand()"
+                                class="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-95 flex items-center justify-center gap-3">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Jalankan (OKE)
+                            </button>
+
+                            <div
+                                class="px-5 py-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-800/20 flex gap-4 items-start">
+                                <div class="mt-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <p class="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold leading-relaxed">
+                                    <span class="uppercase tracking-widest block mb-0.5 opacity-60">Tips Sistem:</span>
+                                    Perintah otomatis terkirim ke Live Console. Tekan <kbd
+                                        class="px-1.5 py-0.5 bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-700 rounded text-[9px]">Enter</kbd>
+                                    untuk eksekusi cepat.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- Right Side: Live CLI Console (Embedded) -->
+                <div class="lg:col-span-7 xl:col-span-8 lg:sticky lg:top-6">
+                    <div
+                        class="bg-[#0b0e14] rounded-[2.5rem] border-4 border-gray-800 shadow-2xl overflow-hidden flex flex-col h-[600px] sm:h-[750px] lg:h-[850px] transition-all">
+                        <!-- Terminal Header -->
+                        <div class="px-6 py-4 bg-gray-800 flex justify-between items-center border-b border-gray-700">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex space-x-2">
+                                    <div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+                                    <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+                                    <div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+                                </div>
+                                <div class="hidden sm:flex items-center gap-2">
+                                    <div class="w-px h-4 bg-gray-700"></div>
+                                    <span
+                                        class="text-[10px] font-black text-gray-500 uppercase tracking-widest pl-2">ZTE
+                                        LIVE CONSOLE</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div id="cliTarget"
+                                    class="text-[10px] font-mono text-blue-400 font-bold uppercase bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                                    READY</div>
+                                <div class="flex items-center bg-gray-900/50 rounded-xl p-1 border border-gray-700/50">
+                                    <button onclick="clearConsole()"
+                                        class="px-3 py-1.5 text-[9px] font-black text-gray-500 hover:text-white uppercase transition-all rounded-lg hover:bg-gray-800">Clear</button>
+                                    <div class="w-px h-3 bg-gray-800 mx-1"></div>
+                                    <button onclick="copyCliOutput()"
+                                        class="p-1.5 hover:bg-gray-800 rounded-lg text-gray-500 hover:text-blue-400 transition-all"
+                                        title="Copy Output">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Output Area -->
+                        <div id="cliOutputArea"
+                            class="flex-1 p-6 md:p-10 overflow-y-auto font-mono text-xs md:text-sm leading-relaxed scrollbar-hide text-blue-300 bg-[radial-gradient(circle_at_top_right,_rgba(29,78,216,0.05),_transparent_50%)]">
+                            <div
+                                class="cli-placeholder flex flex-col items-center justify-center h-full text-center space-y-6">
+                                <div
+                                    class="w-20 h-20 bg-gray-800/20 rounded-3xl flex items-center justify-center border border-gray-700/30 transform rotate-3">
+                                    <svg class="w-10 h-10 text-gray-800" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="text-gray-700 text-[10px] uppercase font-black tracking-[0.4em]">
+                                        Awaiting
+                                        Command</div>
+                                    <p class="text-gray-800 text-[10px] max-w-[200px] leading-relaxed mx-auto">Select a
+                                        template or type manual command to see real-time ZTE output.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Manual Input Area (Hidden as requested) -->
+                        <div
+                            class="hidden px-6 py-5 bg-gray-800/50 border-t border-gray-700/50 flex items-center gap-4 transition-all">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                <div class="text-blue-500 font-mono text-xs font-bold tracking-tighter uppercase">ZTE#
+                                </div>
+                            </div>
+                            <input type="text" id="cliManualInput"
+                                placeholder="Ketik perintah manual ZTE (Enter untuk kirim)..."
+                                class="flex-1 bg-transparent border-none outline-none text-xs md:text-sm text-white font-mono placeholder-gray-700 focus:placeholder-gray-500 transition-all">
+                            <div id="cliStatusIndicator"
+                                class="hidden sm:flex items-center gap-2 opacity-0 transition-opacity">
+                                <div class="flex space-x-1">
+                                    <div
+                                        class="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]">
+                                    </div>
+                                    <div
+                                        class="w-1 h-1 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]">
+                                    </div>
+                                    <div class="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+
+        <script>
+            const oltFilter = document.getElementById('oltFilter');
+            const builderInterfaceType = document.getElementById('builderInterfaceType');
+            const builderCardFilter = document.getElementById('builderCardFilter');
+            const builderPortFilter = document.getElementById('builderPortFilter');
+            const builderOnuId = document.getElementById('builderOnuId');
+            const builderOnuSn = document.getElementById('builderOnuSn');
+            const builderVlanId = document.getElementById('builderVlanId');
+            const builderCommandTemplate = document.getElementById('builderCommandTemplate');
+            const cliOutputArea = document.getElementById('cliOutputArea');
+            const cliManualInput = document.getElementById('cliManualInput');
+            const cliStatusIndicator = document.getElementById('cliStatusIndicator');
+            const cliTarget = document.getElementById('cliTarget');
+
+            let onuRows = [];
+            let allOnus = [];
+
+            // Command History
+            let cmdHistory = [];
+            let historyIndex = -1;
+
+            // --- CORE TERMINAL LOGIC ---
+
+            function appendToConsole(text, type = 'output') {
+                const isAtBottom = cliOutputArea.scrollHeight - cliOutputArea.scrollTop <= cliOutputArea.clientHeight + 100;
+
+                // Remove placeholder if it exists (only on the first command)
+                const placeholder = cliOutputArea.querySelector('.cli-placeholder');
+                if (placeholder) {
+                    cliOutputArea.innerHTML = '';
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = type === 'command' ? 'text-blue-400 font-bold mb-1 mt-4' : 'text-blue-100 whitespace-pre-wrap mb-1';
+
+                if (type === 'command') {
+                    wrapper.innerHTML = `<span class="text-gray-500 mr-2">ZTE#</span>${text}`;
+                } else if (type === 'error') {
+                    wrapper.className = 'text-red-400 font-bold mb-1 mt-2';
+                    wrapper.innerText = `[ERROR] ${text}`;
+                } else {
+                    wrapper.innerText = text;
+                }
+
+                cliOutputArea.appendChild(wrapper);
+
+                if (isAtBottom) {
+                    cliOutputArea.scrollTop = cliOutputArea.scrollHeight;
+                }
+            }
+
+            function clearConsole() {
+                cliOutputArea.innerHTML = `
+                <div class="cli-placeholder flex flex-col items-center justify-center h-full text-center space-y-4">
+                    <div class="w-16 h-16 bg-gray-800/30 rounded-full flex items-center justify-center border border-gray-700/50">
+                        <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-gray-600 text-[10px] uppercase tracking-[0.3em] font-black">Console Cleared</div>
+                </div>
+            `;
+            }
+
+            function copyCliOutput() {
+                const text = Array.from(cliOutputArea.querySelectorAll('div'))
+                    .map(el => el.innerText)
+                    .join('\n');
+                
+                const onSuccess = () => {
+                    const originalText = cliTarget.innerText;
+                    cliTarget.innerText = 'COPIED!';
+                    cliTarget.classList.add('text-green-400');
+                    setTimeout(() => {
+                        cliTarget.innerText = originalText;
+                        cliTarget.classList.remove('text-green-400');
+                    }, 2000);
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(onSuccess).catch(err => {
+                        console.error('Failed to copy!', err);
+                        fallbackCopyToClipboardText(text, onSuccess);
+                    });
+                } else {
+                    fallbackCopyToClipboardText(text, onSuccess);
+                }
+            }
+
+            function copyToClipboard(elementId, btn) {
+                const el = document.getElementById(elementId);
+                const text = (el.innerText || el.textContent).trim();
+                
+                const onSuccess = () => {
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = `
+                        <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        Done
+                    `;
+                    btn.classList.add('text-emerald-500');
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('text-emerald-500');
+                    }, 2000);
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(onSuccess).catch(err => {
+                        console.error('Failed to copy!', err);
+                        fallbackCopyToClipboardText(text, onSuccess);
+                    });
+                } else {
+                    fallbackCopyToClipboardText(text, onSuccess);
+                }
+            }
+
+            function fallbackCopyToClipboardText(text, callback) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful && callback) {
+                        callback();
+                    }
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            // --- ZTE COMMAND BUILDER LOGIC ---
+
+            function updatePortOptions() {
+                const type = builderInterfaceType.value;
+                const portLabel = document.querySelector('label[for="builderPortFilter"]') || builderPortFilter.previousElementSibling;
+
+                // Clear current options
+                builderPortFilter.innerHTML = '';
+
+                const maxPorts = (type === 'xgei' || type === 'gei') ? 4 : (type === 'epon-olt' ? 8 : 16);
+                const prefix = type === 'xgei' ? 'XGEI' : (type === 'gei' ? 'GEI' : (type === 'epon-olt' ? 'EPON' : 'PON'));
+
+                if (portLabel) {
+                    portLabel.innerText = `Pilih Port ${prefix}`;
+                }
+
+                for (let i = 1; i <= maxPorts; i++) {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.innerText = `${prefix} ${i}`;
+                    builderPortFilter.appendChild(opt);
+                }
+            }
+
+            async function runTemplateCommand() {
+                const oltId = oltFilter.value;
+                if (!oltId) {
+                    alert("Pilih OLT terlebih dahulu gan.");
+                    return;
+                }
+
+                const onuId = builderOnuId.value.trim();
+                const template = builderCommandTemplate.value;
+                const creds = getCredentials();
+
+                // Special case: Global commands that don't need PON/ONU ID
+                if (template === "UNCFG") {
+                    const command = `show gpon onu uncfg`;
+                    cliTarget.innerText = template;
+                    appendToConsole(command, 'command');
+                    cliStatusIndicator.style.opacity = '1';
+                    try {
+                        const response = await OltAPI.executeCommand(creds, 'TEMPLATE', 'raw', command);
+                        if (response.status === 'success') {
+                            appendToConsole(response.output);
+                        } else {
+                            appendToConsole(response.message, 'error');
+                        }
+                    } catch (err) {
+                        appendToConsole("Gagal menghubungi backend.", 'error');
+                    } finally {
+                        cliStatusIndicator.style.opacity = '0';
+                    }
+                    return;
+                }
+
+                // Special case: MAC by VLAN (Global)
+                if (template === "MAC_VLAN") {
+                    const vlan = builderVlanId.value.trim();
+                    if (!vlan) {
+                        alert("Masukkan VLAN ID terlebih dahulu gan.");
+                        return;
+                    }
+                    const command = `show mac vlan ${vlan}`;
+                    cliTarget.innerText = template;
+                    appendToConsole(command, 'command');
+                    cliStatusIndicator.style.opacity = '1';
+                    try {
+                        const response = await OltAPI.executeCommand(creds, 'TEMPLATE', 'raw', command);
+                        if (response.status === 'success') {
+                            appendToConsole(response.output);
+                        } else {
+                            appendToConsole(response.message, 'error');
+                        }
+                    } catch (err) {
+                        appendToConsole("Gagal menghubungi backend.", 'error');
+                    } finally {
+                        cliStatusIndicator.style.opacity = '0';
+                    }
+                    return;
+                }
+
+                // Special case: Find by SN (Global)
+                if (template === "BY_SN") {
+                    const sn = builderOnuSn.value.trim().toUpperCase();
+                    if (!sn) {
+                        alert("Masukkan Serial Number (SN) terlebih dahulu gan.");
+                        return;
+                    }
+                    const command = `show gpon onu by sn ${sn}`;
+                    cliTarget.innerText = template;
+                    appendToConsole(command, 'command');
+                    cliStatusIndicator.style.opacity = '1';
+                    try {
+                        const response = await OltAPI.executeCommand(creds, 'TEMPLATE', 'raw', command);
+                        if (response.status === 'success') {
+                            appendToConsole(response.output);
+                        } else {
+                            appendToConsole(response.message, 'error');
+                        }
+                    } catch (err) {
+                        appendToConsole("Gagal menghubungi backend.", 'error');
+                    } finally {
+                        cliStatusIndicator.style.opacity = '0';
+                    }
+                    return;
+                }
+
+                const card = builderCardFilter.value;
+                const port = builderPortFilter.value;
+                const type = builderInterfaceType.value;
+                const pon = `${type}_${card}/${port}`;
+
+                // Construct interface
+                // If ONU ID is present, must use gpon-onu_ or epon-onu_ prefix instead of gpon-olt_ or epon-olt_
+                let interfaceName = pon;
+                if (onuId) {
+                    // Ensure the prefix is swapped correctly for ONU-level diagnostics
+                    if (type === 'gpon-olt') {
+                        interfaceName = pon.replace('gpon-olt_', 'gpon-onu_') + ":" + onuId;
+                    } else if (type === 'epon-olt') {
+                        interfaceName = pon.replace('epon-olt_', 'epon-onu_') + ":" + onuId;
+                    }
+                }
+
+                const tech = type.includes('epon') ? 'epon' : 'gpon';
+
+                let command = "";
+                let apiMethod = "executeCommand";
+                let cmdType = "raw";
+
+                switch (template) {
+                    case "STATE":
+                        command = `show ${tech} onu state ${interfaceName}`;
+                        break;
+                    case "DETAIL":
+                        command = `show ${tech} onu detail-info ${interfaceName}`;
+                        break;
+                    case "SIGNAL":
+                        command = `show pon power attenuation ${interfaceName}`;
+                        break;
+                    case "PON_SIGNAL":
+                        command = `show pon power onu-rx ${interfaceName}`;
+                        break;
+                    case "MAC":
+                        command = `show mac ${tech}-onu ${interfaceName}`;
+                        break;
+                    case "PORT_RUNNING":
+                    case "PON_SN_LIST":
+                        command = `show running-config interface ${interfaceName}`;
+                        break;
+                    case "INTERFACE_STATUS":
+                        command = `show interface ${interfaceName}`;
+                        break;
+                    case "ONU_RUNNING":
+                        command = `show onu running conf ${interfaceName}`;
+                        break;
+                    case "IP_HOST":
+                        command = `show ${tech} remote-onu ip-host ${interfaceName}`;
+                        break;
+                    case "ETH_STATUS":
+                        command = `show ${tech} remote-onu interface eth ${interfaceName}`;
+                        break;
+                    case "ADD_VLAN":
+                        const vlanId = builderVlanId.value.trim();
+                        if (!vlanId) {
+                            alert("Masukkan VLAN ID terlebih dahulu gan.");
+                            return;
+                        }
+                        command = `conf t
+interface ${pon}
+switchport vlan ${vlanId} tag
+end
+write`;
+                        break;
+                }
+
+                cliTarget.innerText = template;
+                appendToConsole(command, 'command');
+                cliStatusIndicator.style.opacity = '1';
+
+                try {
+                    const response = await OltAPI.executeCommand(creds, 'TEMPLATE', 'raw', command);
+                    if (response.status === 'success') {
+                        appendToConsole(response.output);
+                    } else {
+                        appendToConsole(response.message, 'error');
+                    }
+                } catch (err) {
+                    appendToConsole("Gagal menghubungi backend.", 'error');
+                } finally {
+                    cliStatusIndicator.style.opacity = '0';
+                }
+            }
+
+            async function handleManualCommand() {
+                const cmd = cliManualInput.value.trim();
+                if (!cmd) return;
+
+                const selectedOpt = oltFilter.options[oltFilter.selectedIndex];
+                if (!selectedOpt || selectedOpt.value === "") {
+                    alert("Pilih OLT terlebih dahulu gan.");
+                    return;
+                }
+
+                const creds = getCredentials();
+
+                cliManualInput.value = '';
+                appendToConsole(cmd, 'command');
+                cliStatusIndicator.style.opacity = '1';
+
+                // Add to history
+                if (cmdHistory[0] !== cmd) {
+                    cmdHistory.unshift(cmd);
+                    if (cmdHistory.length > 50) cmdHistory.pop();
+                }
+                historyIndex = -1;
+
+                try {
+                    // Use 'raw' type for manual commands
+                    const response = await OltAPI.executeCommand(creds, 'MANUAL', 'raw', cmd);
+                    if (response.status === 'success') {
+                        appendToConsole(response.output);
+                    } else {
+                        appendToConsole(response.message, 'error');
+                    }
+                } catch (err) {
+                    appendToConsole("Gagal menghubungi backend.", 'error');
+                } finally {
+                    cliStatusIndicator.style.opacity = '0';
+                }
+            }
+
+            function getCredentials() {
+                const selectedIndex = oltFilter.selectedIndex;
+                if (selectedIndex < 0) return { olt_id: null };
+                const selectedOpt = oltFilter.options[selectedIndex];
+                return {
+                    olt_id: selectedOpt && selectedOpt.value ? selectedOpt.value : null
+                };
+            }
+
+            // --- DATA FETCHING ---
+
+            async function loadOlts() {
+                try {
+                    const result = await OltAPI.listDevices();
+                    const devices = result.data || [];
+                    // Filter only ZTE
+                    const zteOlts = devices.filter(d => d.vendor === 'ZTE' || d.vendor === 'zte');
+                    oltFilter.innerHTML = '<option value="">Pilih OLT ZTE...</option>' +
+                        zteOlts.map(o => `<option value="${o.id}">${o.name} (${o.ip})</option>`).join('');
+
+                    // Check for OLT ID in URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const oltId = urlParams.get('id') || urlParams.get('olt_id');
+                    if (oltId) {
+                        oltFilter.value = oltId;
+                        
+                        // Check for ONU ID to set value (but don't auto-run)
+                        const onuId = urlParams.get('onu');
+                        if (onuId && onuId.includes(':')) {
+                            const [pon, oid] = onuId.split(':');
+                            interfaceSelector.value = `${pon}:${oid}`;
+                            builderPon.value = pon;
+                            builderOnuId.value = oid;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to load OLTs', err);
+                }
+            }
+
+            async function triggerTargetedScan() {
+                const type = builderInterfaceType.value;
+                const card = builderCardFilter.value;
+                const port = builderPortFilter.value;
+                const interfaceName = `${type}_${card}/${port}`;
+                
+                // Show a toast or log that we are scanning a specific port
+                appendToConsole(`Memindai port spesifik: ${interfaceName}...`, 'info');
+                await loadOnuList(interfaceName);
+            }
+
+            async function loadOnuList(interfaceName = null) {
+                const oltId = oltFilter.value;
+                if (!oltId) return;
+
+                const creds = getCredentials();
+
+                try {
+                    // Pass the interfaceName to the API
+                    const response = await OltAPI.getOnuList(creds, interfaceName);
+                    if (response.status === 'success') {
+                        allOnus = response.data;
+                        // Display results or update UI
+                        if (typeof displayOnuList === 'function') {
+                            displayOnuList(allOnus);
+                        }
+                        if (interfaceName) {
+                            appendToConsole(`Berhasil memuat ${allOnus.length} ONU.`, 'success');
+                        }
+                    } else {
+                        appendToConsole("Gagal memuat daftar ONU: " + response.message, 'error');
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch ONU list", err);
+                    appendToConsole("Error: " + err.message, 'error');
+                }
+            }
+
+            function applyFilters() {
+                // Deprecated for Command Builder mode
+            }
+
+            async function viewPonConfig() {
+                const pon = ponFilter.value;
+                if (pon === 'all') {
+                    alert('Pilih spesifik port PON gan.');
+                    return;
+                }
+                const creds = getCredentials();
+                appendToConsole(`Fetching running config for interface ${pon}...`, 'command');
+                cliStatusIndicator.style.opacity = '1';
+
+                try {
+                    const response = await OltAPI.getPonConfig(creds, pon);
+                    if (response.status === 'success') {
+                        appendToConsole(response.output);
+                    } else {
+                        appendToConsole(response.message, 'error');
+                    }
+                } catch (err) {
+                    appendToConsole("Gagal menghubungi backend.", 'error');
+                } finally {
+                    cliStatusIndicator.style.opacity = '0';
+                }
+            }
+
+            // --- EVENT LISTENERS ---
+            // Auto-load disabled per user request
+            // oltFilter.addEventListener('change', () => loadOnuList());
+            cliManualInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleManualCommand();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (historyIndex < cmdHistory.length - 1) {
+                        historyIndex++;
+                        cliManualInput.value = cmdHistory[historyIndex];
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (historyIndex > 0) {
+                        historyIndex--;
+                        cliManualInput.value = cmdHistory[historyIndex];
+                    } else if (historyIndex === 0) {
+                        historyIndex = -1;
+                        cliManualInput.value = '';
+                    }
+                }
+            });
+
+            // --- Card Tab Toggler ---
+            function toggleCard(mode) {
+                const builderCard = document.getElementById('commandBuilderCard');
+                const registerCard = document.getElementById('registerOnuCard');
+                const editCard = document.getElementById('editOnuCard');
+                const tabBuilder = document.getElementById('tabBuilder');
+                const tabRegister = document.getElementById('tabRegister');
+                const tabEdit = document.getElementById('tabEdit');
+
+                // Reset all
+                if (builderCard) builderCard.classList.add('hidden');
+                if (registerCard) registerCard.classList.add('hidden');
+                if (editCard) editCard.classList.add('hidden');
+
+                tabBuilder.className = "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all text-gray-400 hover:text-gray-600 dark:hover:text-gray-200";
+                tabRegister.className = "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all text-gray-400 hover:text-gray-600 dark:hover:text-gray-200";
+                if (tabEdit) tabEdit.className = "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all text-gray-400 hover:text-gray-600 dark:hover:text-gray-200";
+
+                if (mode === 'builder') {
+                    if (builderCard) builderCard.classList.remove('hidden');
+                    tabBuilder.className = "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all bg-blue-600 text-white shadow-lg shadow-blue-500/20";
+                } else if (mode === 'register') {
+                    if (registerCard) registerCard.classList.remove('hidden');
+                    tabRegister.className = "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all bg-blue-600 text-white shadow-lg shadow-blue-500/20";
+                } else if (mode === 'edit') {
+                    if (editCard) editCard.classList.remove('hidden');
+                    if (tabEdit) tabEdit.className = "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all bg-blue-600 text-white shadow-lg shadow-blue-500/20";
+                }
+            }
+
+            // --- ONU Registration Logic (Migrated from Provisioning) ---
+            async function scanUnconfigured() {
+                const oltId = oltFilter.value;
+                if (!oltId) return alert('Silakan pilih OLT terlebih dahulu!');
+
+                const btn = document.getElementById('regScanBtn');
+                btn.disabled = true;
+                btn.innerText = 'Scanning...';
+
+                const ifType = builderInterfaceType.value;
+                const tech = ifType.includes('epon') ? 'epon' : 'gpon';
+
+                appendToConsole(`show ${tech} onu uncfg`, 'command');
+
+                try {
+                    const creds = getCredentials();
+                    // Execute directly to get raw output inside console
+                    const response = await OltAPI.executeCommand(creds, 'TEMPLATE', 'raw', `show ${tech} onu uncfg`);
+
+                    if (response.status === 'success') {
+                        appendToConsole(response.output);
+                    } else {
+                        appendToConsole(response.message, 'error');
+                    }
+                } catch (error) {
+                    console.error("Scan error:", error);
+                    appendToConsole("Gagal Eksekusi Scan.", 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'Scan';
+                }
+            }
+
+            function updateRegPreview(force = false) {
+                const pon = document.getElementById('regPon').value.trim();
+                const sn = document.getElementById('regSn').value.trim().toUpperCase();
+                const id = document.getElementById('regOnuId').value.trim();
+                const type = document.getElementById('regOnuType').value.trim();
+
+                const pppoeUser = document.getElementById('regPppoeUser').value.trim();
+                const pppoePass = document.getElementById('regPppoePass').value.trim();
+                const vlanProf = document.getElementById('regVlanProfile').value.trim();
+
+                const ifType = document.getElementById('builderInterfaceType').value;
+
+                const prefixOlt = ifType === 'epon-olt' ? 'epon-olt' : 'gpon-olt';
+                const prefixOnu = ifType === 'epon-olt' ? 'epon-onu' : 'gpon-onu';
+
+                // Get Draft elements
+                const draft1 = document.getElementById('regScriptDraft');
+                const draft2 = document.getElementById('regScriptDraft2');
+                const draft3 = document.getElementById('regScriptDraft3');
+
+                if (force) {
+                    if (draft1) delete draft1.dataset.manual;
+                    if (draft2) delete draft2.dataset.manual;
+                    if (draft3) delete draft3.dataset.manual;
+                }
+
+                if (draft1 && draft1.dataset.manual !== 'true') {
+                    draft1.innerText = `conf t
+interface ${prefixOlt}_${pon}
+  onu ${id} type ${type} sn ${sn}
+exit`;
+                }
+
+                if (draft2 && draft2.dataset.manual !== 'true') {
+                    draft2.innerText = `conf t
+interface ${prefixOnu}_${pon}:${id}
+  name CIFO-HOTEL-MERCURE
+  tcont 1 profile UPTO-1G
+  tcont 2 profile UPTO-300M
+  gemport 1 tcont 1
+  gemport 1 traffic-limit downstream DOWN-1G 
+  gemport 2 tcont 2
+  gemport 2 traffic-limit downstream DOWN-300M 
+  service-port 1 vport 1 user-vlan 416 vlan 416 
+  service-port 2 vport 2 user-vlan 88 vlan 88 
+  pppoe-intermediate-agent enable vport 2
+exit`;
+                }
+
+                if (draft3 && draft3.dataset.manual !== 'true') {
+                    draft3.innerText = `conf t
+pon-onu-mng ${prefixOnu}_${pon}:${id}
+  service mgmt gemport 2 vlan 88
+  service internet gemport 1 vlan 123
+  wan-ip 1 mode pppoe username ${pppoeUser || 'ZTEGC9F45949'} password ${pppoePass || 'bandung'} vlan-profile ${vlanProf || 'MGMT-ONU'} host 1
+  name HOTEL-MERCURE
+  vlan port eth_0/1 mode tag vlan 123
+  vlan port eth_0/2 mode tag vlan 123
+  vlan port eth_0/3 mode tag vlan 123
+  vlan port eth_0/4 mode tag vlan 123
+  security-mgmt 211 state enable ingress-type lan protocol telnet
+  security-mgmt 212 state enable mode forward protocol web 
+  snmp 1 profile cmi-rtl host 1
+exit`;
+                }
+            }
+
+            async function executeRegistration() {
+                const sn = document.getElementById('regSn').value.trim();
+                if (!sn) {
+                    return alert('Isi Serial Number terlebih dahulu!');
+                }
+
+                const script1 = document.getElementById('regScriptDraft').innerText;
+                const script2 = document.getElementById('regScriptDraft2') ? document.getElementById('regScriptDraft2').innerText : '';
+                const script3 = document.getElementById('regScriptDraft3') ? document.getElementById('regScriptDraft3').innerText : '';
+                const script = `${script1}\n\n${script2}\n\n${script3}`;
+                const creds = getCredentials();
+                const pon = document.getElementById('regPon').value.trim();
+
+                if (!pon || !document.getElementById('regOnuId').value.trim()) {
+                    return alert('PON Interface dan ONU ID harus diisi!');
+                }
+
+                if (script.includes('! Script akan muncul')) {
+                    return alert('Script belum siap, lengkapi data terlebih dahulu.');
+                }
+
+                const btn = document.getElementById('regExecuteBtn');
+                btn.disabled = true;
+                btn.innerText = 'Executing...';
+
+                try {
+                    // Execute on interface or TEMPLATE/raw depending on driver behavior
+                    const response = await OltAPI.executeCommand(creds, 'TEMPLATE', 'raw', script);
+                    if (response.status === 'success') {
+                        appendToConsole(script, 'command');
+                        appendToConsole(response.output);
+                        alert('Registrasi Selesai! Cek konsol diagnosa.');
+                    } else {
+                        appendToConsole(response.message, 'error');
+                        alert('Gagal Eksekusi: ' + response.message);
+                    }
+                } catch (err) {
+                    console.error("Execution error:", err);
+                    appendToConsole("Gagal Eksekusi", 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'REGISTRASI SEKARANG';
+                }
+            }
+
+            function toggleEditParams() {
+                const action = document.getElementById('editActionSelector').value;
+                const groups = document.querySelectorAll('.edit-param-group');
+                groups.forEach(g => g.classList.add('hidden'));
+
+                if (action === 'RENAME') document.getElementById('paramRename').classList.remove('hidden');
+                else if (action === 'REPLACE') document.getElementById('paramReplace').classList.remove('hidden');
+                else if (action === 'PPPOE') document.getElementById('paramPppoe').classList.remove('hidden');
+                else if (action === 'VLAN') document.getElementById('paramVlan').classList.remove('hidden');
+                else if (action === 'TCONT_GEMPORT') document.getElementById('paramTcont').classList.remove('hidden');
+                else if (action === 'MAINTENANCE') document.getElementById('paramMaintenance').classList.remove('hidden');
+
+                updateEditPreview();
+            }
+
+            function updateEditPreview() {
+                // Ensure edit elements exist before trying to read them
+                const selector = document.getElementById('editActionSelector');
+                if (!selector) return;
+
+                const action = selector.value;
+                const pon = document.getElementById('editPon').value.trim();
+                const id = document.getElementById('editOnuId').value.trim();
+                const ifType = builderInterfaceType.value;
+                const prefixOnu = ifType.includes('epon') ? 'epon-onu' : 'gpon-onu';
+                const prefixOlt = ifType.includes('epon') ? 'epon-olt' : 'gpon-olt';
+
+                let script = "";
+
+                if (action === 'RENAME') {
+                    const name = document.getElementById('editOnuName').value.trim();
+                    script = `conf t\ninterface ${prefixOnu}_${pon}:${id}\n  name ${name || 'NAME'}\nend\nwrite`;
+                } else if (action === 'REPLACE') {
+                    const newSn = document.getElementById('editNewSn').value.trim().toUpperCase();
+                    script = `conf t\ninterface ${prefixOnu}_${pon}:${id}\n  registration-method sn ${newSn || 'ZTEGC...'}\nend\nwrite`;
+                } else if (action === 'PPPOE') {
+                    const pUser = document.getElementById('editPppoeUser').value.trim();
+                    const pPass = document.getElementById('editPppoePass').value.trim();
+                    const vProf = document.getElementById('editVlanProfile').value.trim();
+                    script = `conf t\npon-onu-mng ${prefixOnu}_${pon}:${id}\n  wan-ip 1 mode pppoe username ${pUser || 'USER'} password ${pPass || 'PASS'} vlan-profile ${vProf || 'MGMT-ONU'} host 1\nend\nwrite`;
+                } else if (action === 'VLAN') {
+                    const oltInt = document.getElementById('vlanOltInt').value.trim() || '416';
+                    const oltMgmt = document.getElementById('vlanOltMgmt').value.trim() || '88';
+                    const onuInt = document.getElementById('vlanOnuInt').value.trim() || '123';
+                    const onuMgmt = document.getElementById('vlanOnuMgmt').value.trim() || '88';
+                    script = `conf t\ninterface ${prefixOnu}_${pon}:${id}\n  no service-port 1\n  no service-port 2\n  service-port 1 vport 1 user-vlan ${oltInt} vlan ${oltInt}\n  service-port 2 vport 2 user-vlan ${oltMgmt} vlan ${oltMgmt}\nend\nwrite\n\nconf t\npon-onu-mng ${prefixOnu}_${pon}:${id}\n  no service mgmt\n  no service internet\n  service mgmt gemport 2 vlan ${onuMgmt}\n  service internet gemport 1 vlan ${onuInt}\n  vlan port eth_0/1 mode tag vlan ${onuInt}\n  vlan port eth_0/2 mode tag vlan ${onuInt}\n  vlan port eth_0/3 mode tag vlan ${onuInt}\n  vlan port eth_0/4 mode tag vlan ${onuInt}\nend\nwrite`;
+                } else if (action === 'TCONT_GEMPORT') {
+                    const tId = document.getElementById('editTcontId').value.trim() || '1';
+                    const tProf = document.getElementById('editTcontProfile').value.trim() || 'UPTO-1G';
+                    const gId = document.getElementById('editGemportId').value.trim() || '1';
+                    const gLim = document.getElementById('editTrafficLimit').value.trim() || 'DOWN-1G';
+                    script = `conf t\ninterface ${prefixOnu}_${pon}:${id}\n  tcont ${tId} profile ${tProf}\n  gemport ${gId} tcont ${tId}\n  gemport ${gId} traffic-limit downstream ${gLim}\nend\nwrite`;
+                } else if (action === 'MAINTENANCE') {
+                    const type = document.getElementById('editMaintenanceType').value;
+                    if (type === 'delete') {
+                        script = `conf t\ninterface ${prefixOlt}_${pon}\n  no onu ${id}\nend\nwrite`;
+                    } else {
+                        const cmd = type === 'reboot' ? 'reboot' : 'restore factory';
+                        script = `conf t\npon-onu-mng ${prefixOnu}_${pon}:${id}\n  ${cmd}\nend\nwrite`;
+                    }
+                }
+
+                const draft = document.getElementById('editScriptDraft');
+                if (draft) draft.innerText = script || "! Pilih perintah untuk melihat script...";
+            }
+
+            async function handleEditExecute() {
+                const action = document.getElementById('editActionSelector').value;
+                const pon = document.getElementById('editPon').value.trim();
+                const id = document.getElementById('editOnuId').value.trim();
+                const script = document.getElementById('editScriptDraft').innerText;
+
+                if (!pon || !id) {
+                    return alert('PON Interface dan ONU ID harus diisi!');
+                }
+
+                if (script.startsWith('!')) {
+                    return alert('Script belum siap. Pastikan parameter sudah terisi.');
+                }
+
+                let confirmMsg = `Yakin ingin menjalankan perintah ${action} pada ONU ${pon}:${id}?`;
+                if (action === 'MAINTENANCE') {
+                    const mType = document.getElementById('editMaintenanceType').value;
+                    if (mType === 'delete') confirmMsg = `PERINGATAN: Yakin ingin MENGHAPUS ONU ${pon}:${id}?`;
+                    else confirmMsg = `Yakin ingin melakukan ${mType.toUpperCase()} pada ONU ${pon}:${id}?`;
+                }
+
+                if (!confirm(confirmMsg)) return;
+
+                const btn = document.getElementById('editExecuteBtn');
+                btn.disabled = true;
+                const originalBtnContent = btn.innerHTML;
+                btn.innerText = 'EXECUTING...';
+
+                try {
+                    const creds = getCredentials();
+                    const response = await OltAPI.executeCommand(creds, 'TEMPLATE', 'raw', script);
+                    if (response.status === 'success') {
+                        appendToConsole(script, 'command');
+                        appendToConsole(response.output);
+                        alert(`Eksekusi ${action} Selesai! Cek konsol diagnosa.`);
+                    } else {
+                        appendToConsole(response.message, 'error');
+                        alert('Gagal Eksekusi: ' + response.message);
+                    }
+                } catch (err) {
+                    console.error("Execution error:", err);
+                    appendToConsole(`Gagal Eksekusi ${action}`, 'error');
+                    alert('Terjadi kesalahan saat eksekusi.');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnContent;
+                }
+            }
+
+
+
+            // Initialize
+            document.addEventListener('DOMContentLoaded', loadOlts);
+        </script>
+
+        <style>
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 5px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: #334155;
+                border-radius: 10px;
+            }
+        </style>
+    </div>
+</body>
+
+</html>

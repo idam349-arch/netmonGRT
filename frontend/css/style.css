@@ -1,0 +1,240 @@
+#sidebar {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.3s ease;
+}
+
+main,
+.flex-1.md\:ml-64 {
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar Section Headers */
+.sidebar-section-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #94a3b8; /* text-slate-400 */
+    text-transform: uppercase;
+    padding: 1.5rem 1rem 0.5rem 1rem;
+    transition: opacity 0.2s ease;
+}
+
+/* Desktop Mini-Sidebar Mode */
+@media (min-width: 768px) {
+    .mini-sidebar #sidebar {
+        width: 4rem !important; /* ~64px (Shadcn standard) */
+        overflow-x: hidden;
+    }
+
+    .mini-sidebar #sidebar:hover {
+        width: 16rem !important; /* ~256px */
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    }
+
+    /* Smoothly hide labels, arrows, and sub-text in mini mode */
+    .mini-sidebar #sidebar:not(:hover) span:not(.no-hide),
+    .mini-sidebar #sidebar:not(:hover) p,
+    .mini-sidebar #sidebar:not(:hover) .dropdown-arrow,
+    .mini-sidebar #sidebar:not(:hover) .sidebar-section-header,
+    .mini-sidebar #sidebar:not(:hover) .active-hide,
+    .mini-sidebar #sidebar:not(:hover) .brand-container div div:not(.shrink-0) {
+        opacity: 0;
+        pointer-events: none;
+        white-space: nowrap;
+        width: 0;
+        margin: 0;
+        visibility: hidden; /* Added to prevent ghost clicks */
+        transition: opacity 0.1s ease, width 0.2s ease;
+    }
+
+    /* Perfect Icon Centering in Mini Mode */
+    .mini-sidebar #sidebar nav a,
+    .mini-sidebar #sidebar nav button {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+        height: 2.75rem;
+        width: 2.75rem;
+        margin: 0.25rem auto;
+        border-radius: 0.75rem;
+    }
+
+    .mini-sidebar #sidebar:hover nav a,
+    .mini-sidebar #sidebar:hover nav button {
+        justify-content: flex-start;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        width: calc(100% - 1.5rem);
+        margin-left: 0.75rem;
+        margin-right: 0.75rem;
+    }
+    
+    .mini-sidebar #sidebar nav a svg,
+    .mini-sidebar #sidebar nav button svg {
+        flex-shrink: 0;
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    /* Align Header Branding */
+    .mini-sidebar #sidebar:not(:hover) .brand-container {
+        padding: 1rem 0;
+        justify-content: center;
+    }
+
+    .mini-sidebar #sidebar:hover .brand-container {
+        padding: 1rem 1.25rem;
+        justify-content: space-between;
+    }
+
+    /* Bottom Section (Profile & Logout) Centering in Mini Mode */
+    .mini-sidebar #sidebar .border-t {
+        padding: 1rem 0.25rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: padding 0.2s ease;
+    }
+
+    .mini-sidebar #sidebar:hover .border-t {
+        padding: 1rem;
+        align-items: stretch;
+    }
+
+    /* Profile Wrapper */
+    .mini-sidebar #sidebar .border-t > div:first-child {
+        justify-content: center;
+        padding: 0.5rem 0;
+        width: 100%;
+        border-radius: 0.75rem;
+    }
+
+    .mini-sidebar #sidebar:not(:hover) .border-t > div:first-child div:first-child {
+        margin-right: 0 !important;
+    }
+
+    .mini-sidebar #sidebar:not(:hover) .border-t > div:first-child svg:last-child {
+        display: none;
+    }
+
+    /* Logout Button */
+    .mini-sidebar #sidebar .border-t > button {
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+        justify-content: center;
+        margin: 0.5rem auto 0 auto;
+        border-radius: 0.75rem;
+    }
+
+    .mini-sidebar #sidebar:hover .border-t > button {
+        width: 100%;
+        height: auto;
+        padding: 0.625rem;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+
+    .mini-sidebar #sidebar:not(:hover) .border-t > button span {
+        display: none;
+    }
+
+    .mini-sidebar #sidebar:not(:hover) .border-t > button svg {
+        margin: 0;
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    /* Adjust Main Content Margin */
+    .mini-sidebar main,
+    .mini-sidebar .flex-1.md\:ml-64,
+    .mini-sidebar .main-content {
+        margin-left: 4rem !important;
+    }
+}
+
+.sidebar-collapsed #sidebar {
+    transform: translateX(-100%) !important;
+}
+
+.sidebar-collapsed main,
+.sidebar-collapsed .flex-1.md\:ml-64 {
+    margin-left: 0 !important;
+}
+
+/* Top Bar / Header */
+.top-bar {
+    display: flex;
+    align-items: center;
+    height: 4rem; /* h-16 */
+    padding: 0 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s ease-in-out;
+}
+
+.dark .top-bar {
+    background: rgba(17, 24, 39, 0.8);
+    border-color: rgba(55, 65, 81, 0.7);
+}
+
+/* Modern Toggle Button (Inside Top Bar) */
+#mobile-toggle {
+    display: flex;
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 10;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Show on all screen sizes in top bar */
+@media (min-width: 1024px) {
+    #mobile-toggle {
+        display: flex !important;
+    }
+}
+
+
+/* Glassmorphism for the toggle button */
+.glass-button {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    color: #4b5563; /* text-gray-600 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass-button {
+    background: rgba(31, 41, 55, 0.85);
+    border-color: rgba(55, 65, 81, 0.7);
+    color: #e5e7eb; /* text-gray-200 */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.glass-button:hover {
+    background: #2563eb; /* blue-600 */
+    color: white;
+    border-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+.glass-button:active {
+    transform: scale(0.95);
+}
+
+/* Custom Scrollbar */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

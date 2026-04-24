@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live CLI Terminal | OLT Multi-Monitoring</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Xterm.js -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --bg-darker: #0f172a;
+            --bg-dark: #1e293b;
+            --bg-lighter: #334155;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --border: #334155;
+            --accent: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-darker);
+            color: var(--text-main);
+            height: 100vh; /* fallback */
+            height: 100dvh; /* dynamic viewport height - accounts for browser chrome */
+            height: calc(var(--real-vh, 1vh) * 100); /* JS fallback */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        header {
+            background: var(--bg-dark);
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-area h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .actions-area {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg-lighter);
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            background: var(--bg-dark);
+            height: 44px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab-bar::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tab-bar::-webkit-scrollbar-thumb {
+            background: var(--bg-lighter);
+            border-radius: 4px;
+        }
+
+        .tab {
+            height: 34px;
+            padding: 0 12px;
+            background: transparent;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .tab:hover {
+            background: var(--bg-lighter);
+            color: var(--text-main);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .tab i.close-btn {
+            padding: 2px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .tab i.close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .add-tab-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-tab-btn:hover {
+            background: var(--bg-lighter);
+            color: var(--text-main);
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            position: relative;
+            background: #000;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .terminal-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            padding: 8px;
+        }
+
+        .terminal-container.active {
+            display: block;
+        }
+
+        /* Command Input Bar - Always Visible */
+        .cmd-input-bar {
+            background: var(--bg-dark);
+            border-top: 1px solid var(--border);
+            padding: 8px 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            z-index: 50;
+            flex-shrink: 0;
+        }
+
+        .cmd-input-bar .autocomplete-wrapper {
+            flex: 1;
+            position: relative;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: border-color 0.2s;
+        }
+
+        .cmd-input-bar .autocomplete-wrapper:focus-within {
+            border-color: var(--primary);
+        }
+
+        .cmd-input-bar input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--accent);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .cmd-input-bar input:focus {
+            outline: none;
+        }
+
+        .autocomplete-ghost {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 10px 14px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            pointer-events: none;
+            white-space: nowrap;
+            overflow: hidden;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .ghost-typed {
+            visibility: hidden;
+            white-space: pre;
+        }
+
+        .ghost-completion {
+            color: rgba(59, 130, 246, 0.4);
+            white-space: pre;
+        }
+
+        .cmd-input-bar button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cmd-input-bar button:active {
+            transform: scale(0.95);
+        }
+
+        /* Autocomplete Dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .autocomplete-dropdown.show {
+            display: block;
+            animation: acDropUp 0.2s ease-out;
+        }
+
+        @keyframes acDropUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .autocomplete-item {
+            padding: 8px 14px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.82rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
+
+        .autocomplete-item .ac-match {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .autocomplete-dropdown::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .autocomplete-dropdown::-webkit-scrollbar-thumb {
+            background: var(--bg-lighter);
+            border-radius: 4px;
+        }
+
+        .ac-help-header {
+            padding: 8px 14px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--accent);
+            background: rgba(16, 185, 129, 0.08);
+            border-bottom: 1px solid var(--border);
+            font-family: 'Fira Code', monospace;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .ac-help-header::before {
+            content: '?';
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            color: var(--bg-darker);
+            border-radius: 50%;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+
+        .ac-help-keyword {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            padding: 6px 14px;
+            font-family: 'Fira Code', monospace;
+            border-left: 3px solid var(--accent);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .ac-help-keyword:hover {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent);
+        }
+
+        .tab-badge {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            background: var(--bg-lighter);
+            padding: 2px 6px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 3;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .autocomplete-wrapper.has-suggestion .tab-badge {
+            opacity: 0.7;
+        }
+
+        /* Quick Keys Bar - Always Visible */
+        .quick-keys-bar {
+            background: var(--bg-dark);
+            border-top: 1px solid var(--border);
+            padding: 6px 12px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            overflow-x: auto;
+            z-index: 50;
+            flex-shrink: 0;
+        }
+
+        .quick-keys-bar::-webkit-scrollbar {
+            height: 0;
+        }
+
+        .qk-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+            background: var(--bg-darker);
+            color: var(--text-dim);
+            white-space: nowrap;
+            font-family: 'Fira Code', monospace;
+            user-select: none;
+        }
+
+        .qk-btn:hover {
+            background: var(--bg-lighter);
+            color: var(--text-main);
+            border-color: var(--primary);
+        }
+
+        .qk-btn:active {
+            transform: scale(0.93);
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .qk-btn.qk-tab {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(16, 185, 129, 0.1));
+            border-color: rgba(59, 130, 246, 0.4);
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .qk-btn.qk-tab:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(16, 185, 129, 0.2));
+            border-color: var(--primary);
+        }
+
+        .qk-btn.qk-danger {
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .qk-btn.qk-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+        }
+
+        .qk-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            opacity: 0.7;
+            white-space: nowrap;
+        }
+
+        /* Modal Quick Connect */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-card {
+            background: var(--bg-dark);
+            width: 100%;
+            max-width: 450px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 12px;
+        }
+
+        input, select {
+            width: 100%;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: white;
+            font-size: 0.95rem;
+            transition: border 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: fixed;
+            bottom: 70px;
+            right: 20px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            padding: 12px 20px;
+            border-radius: 12px;
+            display: none;
+            z-index: 2000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .shortcuts-btn {
+            position: fixed;
+            bottom: 70px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1500;
+            color: var(--text-dim);
+            transition: all 0.2s;
+        }
+
+        .shortcuts-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        /* Tablet Responsive (641px - 1024px) */
+        @media (max-width: 1024px) and (min-width: 641px) {
+            header {
+                padding: 6px 12px;
+                min-height: 50px;
+            }
+
+            .logo-area h1 {
+                font-size: 1rem;
+            }
+
+            .btn {
+                padding: 7px 12px;
+                font-size: 0.78rem;
+            }
+
+            .tab {
+                font-size: 0.78rem;
+                padding: 0 10px;
+                height: 33px;
+            }
+
+            .tab-bar {
+                height: 40px;
+                flex-shrink: 0;
+            }
+
+            .quick-keys-bar {
+                padding: 6px 10px;
+                gap: 5px;
+                flex-shrink: 0;
+            }
+
+            .qk-btn {
+                padding: 6px 10px;
+                font-size: 0.72rem;
+            }
+
+            .cmd-input-bar {
+                padding: 8px 10px;
+                flex-shrink: 0;
+            }
+
+            .cmd-input-bar input {
+                padding: 9px 12px;
+                font-size: 0.85rem;
+            }
+
+            .cmd-input-bar button {
+                padding: 9px 14px;
+                font-size: 0.82rem;
+            }
+
+            .shortcuts-btn {
+                bottom: 76px;
+                right: 12px;
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 640px) {
+            header {
+                padding: 6px 10px;
+                min-height: 48px;
+            }
+
+            .logo-area h1 {
+                font-size: 0.9rem;
+            }
+
+            .btn {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+
+            .tab {
+                font-size: 0.75rem;
+                padding: 0 10px;
+                height: 32px;
+            }
+
+            .tab-bar {
+                height: 38px;
+                flex-shrink: 0;
+            }
+
+            .quick-keys-bar {
+                padding: 5px 8px;
+                gap: 4px;
+                flex-shrink: 0;
+            }
+
+            .qk-btn {
+                padding: 5px 8px;
+                font-size: 0.7rem;
+            }
+
+            .cmd-input-bar {
+                padding: 6px 8px;
+                flex-shrink: 0;
+            }
+
+            .cmd-input-bar input {
+                padding: 8px 10px;
+                font-size: 0.82rem;
+            }
+
+            .cmd-input-bar button {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+
+            .shortcuts-btn {
+                display: none;
+            }
+        }
+
+        /* Tablet & Mobile landscape fix - ensure bars stay visible */
+        @media (max-height: 500px) {
+            header {
+                min-height: 40px;
+                padding: 4px 10px;
+            }
+
+            .logo-area h1 {
+                font-size: 0.85rem;
+            }
+
+            .btn {
+                padding: 5px 8px;
+                font-size: 0.72rem;
+            }
+
+            .tab-bar {
+                height: 32px;
+                flex-shrink: 0;
+            }
+
+            .tab {
+                height: 28px;
+                font-size: 0.72rem;
+            }
+
+            .quick-keys-bar {
+                padding: 4px 8px;
+                flex-shrink: 0;
+            }
+
+            .qk-btn {
+                padding: 4px 8px;
+                font-size: 0.68rem;
+            }
+
+            .cmd-input-bar {
+                padding: 4px 8px;
+                flex-shrink: 0;
+            }
+
+            .cmd-input-bar input {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+
+            .cmd-input-bar button {
+                padding: 6px 10px;
+                font-size: 0.78rem;
+            }
+
+            .shortcuts-btn {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <i data-lucide="terminal" style="color: var(--primary)"></i>
+            <h1>CLI TERMINAL</h1>
+        </div>
+        <div class="actions-area">
+            <div class="zoom-controls" style="display:flex;align-items:center;gap:4px;margin-right:4px;">
+                <button class="btn btn-outline" onclick="zoomOut()" title="Zoom Out (Ctrl+-)" style="padding:6px 8px;">
+                    <i data-lucide="minus" style="width:14px;height:14px"></i>
+                </button>
+                <span id="fontSizeLabel" class="btn btn-outline" onclick="zoomReset()" title="Reset Zoom" style="padding:6px 10px;cursor:pointer;font-family:'Fira Code',monospace;font-size:0.75rem;min-width:52px;justify-content:center;">14px</span>
+                <button class="btn btn-outline" onclick="zoomIn()" title="Zoom In (Ctrl++)" style="padding:6px 8px;">
+                    <i data-lucide="plus" style="width:14px;height:14px"></i>
+                </button>
+            </div>
+            <button class="btn btn-outline" onclick="reconnectActiveTab()" title="Reconnect tab aktif">
+                <i data-lucide="refresh-cw"></i> Reconnect
+            </button>
+            <button class="btn btn-outline" onclick="openModal()">
+                <i data-lucide="zap"></i> Quick Connect
+            </button>
+            <button class="btn btn-primary" onclick="window.close()">
+                <i data-lucide="log-out"></i> Tutup
+            </button>
+        </div>
+    </header>
+
+    <div class="tab-bar" id="tabBar">
+        <!-- Tabs will be injected here -->
+        <div class="add-tab-btn" onclick="openModal()" title="Add New Connection">
+            <i data-lucide="plus"></i>
+        </div>
+    </div>
+
+    <main id="terminalArea">
+        <!-- Terminal containers will be injected here -->
+    </main>
+
+    <!-- Quick Keys Bar -->
+    <div class="quick-keys-bar" id="quickKeysBar">
+        <span class="qk-label">Quick Keys:</span>
+        <button class="qk-btn qk-tab" onclick="sendTabToTerminal()" title="Kirim Tab ke device (auto-complete)">
+            ⇥ Tab
+        </button>
+        <button class="qk-btn" onclick="sendArrowUp(this)" title="Arrow Up - Command History">
+            ↑
+        </button>
+        <button class="qk-btn" onclick="sendArrowDown(this)" title="Arrow Down - Command History">
+            ↓
+        </button>
+        <button class="qk-btn qk-danger" onclick="sendCtrlC(this)" title="Ctrl+C - Cancel/Interrupt">
+            Ctrl+C
+        </button>
+        <button class="qk-btn qk-danger" onclick="sendCtrlZ(this)" title="Ctrl+Z - Suspend">
+            Ctrl+Z
+        </button>
+        <button class="qk-btn" onclick="sendSpace(this)" title="Spacebar - Lanjut halaman (--More--)">
+            Space ⎵
+        </button>
+        <button class="qk-btn" onclick="sendEnterKey(this)" title="Enter">
+            Enter ↵
+        </button>
+        <button class="qk-btn" onclick="onHelpBtnClick(event, this)" title="Help - Tampilkan sub-command yang tersedia">
+            ? Help
+        </button>
+        <span class="qk-label" style="margin-left:4px">│</span>
+        <button class="qk-btn" id="echoToggle" onclick="toggleLocalEcho()" title="Toggle Local Echo — aktifkan jika ketikan tidak muncul di terminal">
+            🔤 Echo: OFF
+        </button>
+    </div>
+
+    <!-- Command Input Bar (works on both mobile and desktop) -->
+    <div class="cmd-input-bar" id="cmdInputBar">
+        <div class="autocomplete-wrapper" id="acWrapper">
+            <input type="text" id="cmdInput" placeholder="Ketik perintah... (Tab = autocomplete)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <div class="autocomplete-ghost" id="acGhost"></div>
+            <div class="autocomplete-dropdown" id="acDropdown"></div>
+            <span class="tab-badge">TAB ↹</span>
+        </div>
+        <button onclick="sendCommand()" id="btnSendCmd">
+            <i data-lucide="send" style="width:16px;height:16px"></i> Kirim
+        </button>
+    </div>
+
+    <!-- Context Hints -->
+    <div class="shortcuts-btn" onclick="toggleShortcuts()">
+        <i data-lucide="keyboard"></i>
+    </div>
+
+    <div class="tooltip" id="shortcutsPanel">
+        <div style="font-weight: 600; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px;">Keyboard Shortcuts</div>
+        <div style="font-size: 0.8rem; display: grid; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; gap: 40px;">
+                <span>Scroll Up</span> <span style="color:var(--text-dim)">Shift + PageUp</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Scroll Down</span> <span style="color:var(--text-dim)">Shift + PageDown</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>New Tab</span> <span style="color:var(--text-dim)">Alt + N</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Close Tab</span> <span style="color:var(--text-dim)">Alt + W</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Reconnect</span> <span style="color:var(--text-dim)">Alt + R</span>
+            </div>
+            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); display: flex; justify-content: space-between;">
+                <span>Auto-Complete</span> <span style="color:var(--text-dim)">Tab ↹</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Connect Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Quick Connect</h2>
+                <p style="color: var(--text-dim); font-size: 0.85rem;">Hubungkan ke peranti eksternal secara langsung.</p>
+            </div>
+            <form id="quickConnectForm">
+                <div class="form-group" style="margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+                    <label>Pilih Perangkat Terdaftar (Opsional)</label>
+                    <select id="deviceSelect">
+                        <option value="">-- Manual Input / Custom --</option>
+                        <optgroup label="OLT Devices" id="oltGroup">
+                        </optgroup>
+                        <optgroup label="MikroTik Routers" id="routerGroup">
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Host / IP Address</label>
+                        <input type="text" id="host" placeholder="192.168.1.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Port</label>
+                        <input type="number" id="port" value="22" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Protocol</label>
+                    <select id="protocol">
+                        <option value="ssh">SSH (Port 22)</option>
+                        <option value="telnet">Telnet (Port 23)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="user" placeholder="admin" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button type="button" class="btn btn-outline" style="flex:1" onclick="closeModal()">Batal</button>
+                    <button type="submit" class="btn btn-primary" style="flex:1; justify-content: center;">Connect</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        const tabBar = document.getElementById('tabBar');
+        const terminalArea = document.getElementById('terminalArea');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const quickConnectForm = document.getElementById('quickConnectForm');
+
+        let tabs = [];
+        let activeTabId = null;
+
+        // Configuration - Always derive WebSocket URL from API_CONFIG.BASE_URL
+        // Extract host:port from API_CONFIG.BASE_URL (e.g., "http://103.110.10.198:60981/api" -> "103.110.10.198:60981")
+        const _apiUrlParts = API_CONFIG.BASE_URL.split('//');
+        const _apiHostPort = _apiUrlParts[1].split('/')[0]; // "103.110.10.198:60981"
+        const _apiProtocol = _apiUrlParts[0]; // "http:" or "https:"
+        const wsProtocol = _apiProtocol === 'https:' ? 'wss:' : 'ws:';
+        const WS_URL_BASE = `${wsProtocol}//${_apiHostPort}/api/terminal/ws`;
+        
+        console.log("DEBUG TERMINAL: WS_URL_BASE =", WS_URL_BASE);
+        console.log("DEBUG TERMINAL: Derived from API_CONFIG.BASE_URL =", API_CONFIG.BASE_URL);
+
+        // ═══════════════════════════════════════════════
+        // Zoom / Font Size Controls
+        // ═══════════════════════════════════════════════
+        const FONT_SIZE_MIN = 8;
+        const FONT_SIZE_MAX = 28;
+        const FONT_SIZE_DEFAULT = 14;
+        let currentFontSize = parseInt(localStorage.getItem('termFontSize')) || FONT_SIZE_DEFAULT;
+
+        function zoomIn() {
+            if (currentFontSize >= FONT_SIZE_MAX) return;
+            currentFontSize = Math.min(currentFontSize + 1, FONT_SIZE_MAX);
+            applyFontSize();
+        }
+
+        function zoomOut() {
+            if (currentFontSize <= FONT_SIZE_MIN) return;
+            currentFontSize = Math.max(currentFontSize - 1, FONT_SIZE_MIN);
+            applyFontSize();
+        }
+
+        function zoomReset() {
+            currentFontSize = FONT_SIZE_DEFAULT;
+            applyFontSize();
+        }
+
+        function applyFontSize() {
+            localStorage.setItem('termFontSize', currentFontSize);
+            document.getElementById('fontSizeLabel').textContent = currentFontSize + 'px';
+            tabs.forEach(t => {
+                t.xterm.options.fontSize = currentFontSize;
+                t.fitAddon.fit();
+            });
+        }
+
+        function openModal() {
+            modalOverlay.style.display = 'flex';
+            loadRegisteredDevices();
+        }
+
+        function closeModal() {
+            modalOverlay.style.display = 'none';
+        }
+
+        let registeredDevicesMap = {};
+        let selectedDeviceId = null;
+
+        async function loadRegisteredDevices() {
+            const select = document.getElementById('deviceSelect');
+            const oltGroup = document.getElementById('oltGroup');
+            const routerGroup = document.getElementById('routerGroup');
+            
+            // Re-fetch only if empty to avoid reloading every click
+            if (oltGroup.children.length > 0 || routerGroup.children.length > 0) return;
+
+            try {
+                const [oltRes, routerRes] = await Promise.all([
+                    OltAPI.listDevices(),
+                    RouterAPI.listRouters()
+                ]);
+
+                oltGroup.innerHTML = '';
+                routerGroup.innerHTML = '';
+                registeredDevicesMap = {};
+
+                if (oltRes.status === 'success' && oltRes.data) {
+                    oltRes.data.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = `${d.name} (${d.ip})`;
+                        oltGroup.appendChild(opt);
+                        registeredDevicesMap[d.id] = { ...d, type: 'olt' };
+                    });
+                }
+
+                if (routerRes.status === 'success' && routerRes.data) {
+                    routerRes.data.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.textContent = `${r.name} (${r.ip})`;
+                        routerGroup.appendChild(opt);
+                        registeredDevicesMap[r.id] = { ...r, type: 'router' };
+                    });
+                }
+            } catch (err) {
+                console.error("Gagal memuat perangkat:", err);
+            }
+        }
+
+        document.getElementById('deviceSelect').onchange = function() {
+            const id = this.value;
+            const passField = document.getElementById('password');
+            
+            if (id && registeredDevicesMap[id]) {
+                const d = registeredDevicesMap[id];
+                document.getElementById('host').value = d.ip;
+                // OLT usually uses protocol field, router too.
+                // If protocol is 'api', we convert to 'ssh' for terminal
+                let proto = d.protocol || 'ssh';
+                if (proto === 'api') proto = 'ssh';
+                
+                document.getElementById('protocol').value = proto;
+                document.getElementById('port').value = d.port || (proto === 'ssh' ? 22 : 23);
+                document.getElementById('user').value = d.user || d.username || '';
+                
+                // Registered devices use secure backend passwords
+                passField.placeholder = "Sandi Tersimpan (Database)";
+                passField.required = false;
+                passField.value = "";
+                selectedDeviceId = id;
+            } else {
+                // Reset for manual
+                passField.placeholder = "••••••••";
+                passField.required = true;
+                selectedDeviceId = null;
+            }
+        };
+
+        // Reset dropdown if manual fields are changed
+        ['host', 'port', 'user', 'password'].forEach(id => {
+            document.getElementById(id).oninput = () => {
+                if (selectedDeviceId) {
+                    document.getElementById('deviceSelect').value = "";
+                    selectedDeviceId = null;
+                    document.getElementById('password').placeholder = "••••••••";
+                    document.getElementById('password').required = true;
+                }
+            };
+        });
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        function createTab(label, targetId, customParams = null) {
+            const id = generateId();
+            const tabEl = document.createElement('div');
+            tabEl.className = 'tab';
+            tabEl.id = `tab-${id}`;
+            tabEl.innerHTML = `
+                <i data-lucide="monitor" size="16"></i>
+                <span>${label}</span>
+                <i data-lucide="x" class="close-btn" size="14" onclick="event.stopPropagation(); removeTab('${id}')"></i>
+            `;
+            tabEl.onclick = () => switchTab(id);
+            
+            // Insert before the add-tab button
+            tabBar.insertBefore(tabEl, tabBar.lastElementChild);
+            lucide.createIcons({ props: { size: 16 }, nameAttr: 'data-lucide', root: tabEl });
+
+            const container = document.createElement('div');
+            container.className = 'terminal-container';
+            container.id = `terminal-container-${id}`;
+            terminalArea.appendChild(container);
+
+            const xterm = new Terminal({
+                theme: {
+                    background: '#000000',
+                    foreground: '#ffffff',
+                    cursor: '#3b82f6',
+                    selection: 'rgba(59, 130, 246, 0.3)'
+                },
+                fontFamily: 'Fira Code, monospace',
+                fontSize: currentFontSize,
+                cursorBlink: true,
+                convertEol: true
+            });
+
+            const fitAddon = new FitAddon.FitAddon();
+            xterm.loadAddon(fitAddon);
+            xterm.open(container);
+            fitAddon.fit();
+
+            const tabObj = { 
+                id, xterm, fitAddon, ws: null, targetId, customParams,
+                localEcho: false,
+                _echoDetect: { ready: false, done: true, buffer: '', hits: 0, pending: [], timer: null }
+            };
+            tabs.push(tabObj);
+
+            // Register keyboard handler ONCE here (not inside async connectWebSocket)
+            // Uses tab.ws which gets updated on each connect/reconnect
+            xterm.onData((data) => {
+                if (tabObj.ws && tabObj.ws.readyState === WebSocket.OPEN) {
+                    tabObj.ws.send(data);
+                    
+                    // Local echo — for devices that don't echo typed chars (e.g., ZTE OLT)
+                    if (tabObj.localEcho) {
+                        writeLocalEcho(tabObj.xterm, data);
+                    } else if (tabObj._echoDetect.ready && !tabObj._echoDetect.done) {
+                        // Echo detection: buffer printable chars to check if server echoes
+                        for (const ch of data) {
+                            const code = ch.charCodeAt(0);
+                            if (code >= 32 && code < 127) {
+                                tabObj._echoDetect.pending.push({ char: ch, time: Date.now() });
+                                tabObj._echoDetect.buffer += ch;
+                            }
+                        }
+                        clearTimeout(tabObj._echoDetect.timer);
+                        tabObj._echoDetect.timer = setTimeout(() => evaluateEchoDetection(tabObj), 400);
+                    }
+                }
+            });
+
+            // Capture Tab key in xterm → send \t to device for native CLI auto-completion
+            xterm.attachCustomKeyEventHandler((e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    return true; // Let xterm process it → onData sends \t to device
+                }
+                return true;
+            });
+
+            connectWebSocket(tabObj);
+            switchTab(id);
+
+            window.addEventListener('resize', () => fitAddon.fit());
+        }
+
+        async function connectWebSocket(tab) {
+            // Reset echo detection for new/reconnected session (done=true → auto-detect OFF by default)
+            tab._echoDetect = { ready: false, done: true, buffer: '', hits: 0, pending: [], timer: null };
+            
+            let url = `${WS_URL_BASE}/${tab.targetId}`;
+            if (tab.customParams) {
+                const base64Params = btoa(JSON.stringify(tab.customParams));
+                url += `?custom_params=${base64Params}`;
+            }
+
+            // Step 1: Health check - verify backend is reachable via HTTP first
+            tab.xterm.write('\x1b[36m[Terminal] Memeriksa koneksi ke backend...\x1b[0m\r\n');
+            try {
+                const healthUrl = `${API_CONFIG.BASE_URL}/terminal/test`;
+                console.log("DEBUG TERMINAL: Health check URL:", healthUrl);
+                const healthRes = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
+                const healthData = await healthRes.json();
+                console.log("DEBUG TERMINAL: Health check response:", healthData);
+                const hMsg = healthData.message || healthData.status || 'Reachable';
+                const hVer = healthData.version || '-';
+                tab.xterm.write(`\x1b[32m[Terminal] Backend OK: ${hMsg} (v${hVer})\x1b[0m\r\n`);
+            } catch (healthErr) {
+                console.error("DEBUG TERMINAL: Health check failed:", healthErr);
+                tab.xterm.write('\r\n\x1b[31m[Error] Backend tidak dapat dijangkau via HTTP!\x1b[0m\r\n');
+                tab.xterm.write(`\x1b[31m[Error] URL: ${API_CONFIG.BASE_URL}/terminal/test\x1b[0m\r\n`);
+                tab.xterm.write('\x1b[33m[Hint] Pastikan backend sudah berjalan dan dapat diakses.\x1b[0m\r\n');
+                tab.xterm.write(`\x1b[33m[Hint] Cek: ${API_CONFIG.BASE_URL.replace('/api','')}\x1b[0m\r\n`);
+                return; // Don't attempt WebSocket if HTTP fails
+            }
+
+            // Step 2: Open WebSocket connection
+            tab.xterm.write(`\x1b[36m[Terminal] Membuka WebSocket ke ${url}...\x1b[0m\r\n`);
+            console.log("DEBUG TERMINAL: Attempting WebSocket connection to:", url);
+            
+            const ws = new WebSocket(url);
+            tab.ws = ws;
+
+            ws.onopen = () => {
+                console.log("DEBUG TERMINAL: WebSocket OPEN");
+                // Start echo detection after initial banner/prompt settles
+                setTimeout(() => {
+                    if (!tab._echoDetect.done) {
+                        tab._echoDetect.ready = true;
+                    }
+                }, 2500);
+            };
+
+            ws.onmessage = (event) => {
+                const data = event.data;
+                
+                // Echo detection: check if typed chars are echoed back by server
+                if (!tab._echoDetect.done && tab._echoDetect.pending.length > 0) {
+                    for (const ch of data) {
+                        const idx = tab._echoDetect.pending.findIndex(p => 
+                            p.char === ch && (Date.now() - p.time) < 600
+                        );
+                        if (idx >= 0) {
+                            tab._echoDetect.pending.splice(idx, 1);
+                            tab._echoDetect.hits++;
+                            const bufIdx = tab._echoDetect.buffer.indexOf(ch);
+                            if (bufIdx >= 0) {
+                                tab._echoDetect.buffer = tab._echoDetect.buffer.slice(0, bufIdx) 
+                                    + tab._echoDetect.buffer.slice(bufIdx + 1);
+                            }
+                        }
+                    }
+                    // Server definitely echoes if 2+ chars matched
+                    if (tab._echoDetect.hits >= 2) {
+                        clearTimeout(tab._echoDetect.timer);
+                        tab._echoDetect.done = true;
+                        tab._echoDetect.pending = [];
+                        tab._echoDetect.buffer = '';
+                        // Auto-disable local echo if it was on but server echoes
+                        if (tab.localEcho) {
+                            tab.localEcho = false;
+                            tab.xterm.write('\r\n\x1b[36m[Auto] Server echo aktif — local echo dinonaktifkan.\x1b[0m\r\n');
+                            updateEchoToggleUI();
+                        }
+                    }
+                }
+                
+                tab.xterm.write(data);
+            };
+
+            ws.onerror = (error) => {
+                console.error("DEBUG TERMINAL: WebSocket error:", error);
+                tab.xterm.write('\r\n\x1b[31m[WebSocket Error] Gagal terhubung ke backend.\x1b[0m\r\n');
+                tab.xterm.write(`\x1b[31m[WebSocket URL] ${url}\x1b[0m\r\n`);
+                tab.xterm.write('\x1b[33m[Hint] Kemungkinan penyebab:\x1b[0m\r\n');
+                tab.xterm.write('\x1b[33m  1. Nginx belum dikonfigurasi untuk WebSocket (proxy_set_header Upgrade)\x1b[0m\r\n');
+                tab.xterm.write('\x1b[33m  2. Atau uvicorn perlu dijalankan langsung: uvicorn main:app --host 0.0.0.0 --port 60981\x1b[0m\r\n');
+            };
+
+            ws.onclose = (event) => {
+                console.log("DEBUG TERMINAL: WebSocket CLOSED, code:", event.code, "reason:", event.reason);
+                tab.xterm.write('\r\n\x1b[33m[WebSocket] Koneksi terputus.\x1b[0m\r\n');
+                tab.xterm.write('\x1b[36m[Hint] Klik tombol "Reconnect" di atas atau tekan Alt+R untuk menghubungkan kembali.\x1b[0m\r\n');
+            };
+
+            // onData handler is already registered in createTab, no need here
+        }
+
+        function switchTab(id) {
+            tabs.forEach(t => {
+                document.getElementById(`tab-${t.id}`).classList.remove('active');
+                document.getElementById(`terminal-container-${t.id}`).classList.remove('active');
+            });
+
+            const tab = tabs.find(t => t.id === id);
+            if (tab) {
+                document.getElementById(`tab-${id}`).classList.add('active');
+                document.getElementById(`terminal-container-${id}`).classList.add('active');
+                activeTabId = id;
+                tab.xterm.focus();
+                setTimeout(() => tab.fitAddon.fit(), 50);
+                updateEchoToggleUI();
+            }
+        }
+
+        function removeTab(id) {
+            const index = tabs.findIndex(t => t.id === id);
+            if (index !== -1) {
+                const tab = tabs[index];
+                if (tab.ws) tab.ws.close();
+                tab.xterm.dispose();
+                
+                document.getElementById(`tab-${id}`).remove();
+                document.getElementById(`terminal-container-${id}`).remove();
+                
+                tabs.splice(index, 1);
+                
+                if (activeTabId === id && tabs.length > 0) {
+                    switchTab(tabs[tabs.length - 1].id);
+                } else if (tabs.length === 0) {
+                    activeTabId = null;
+                    openModal();
+                }
+            }
+        }
+
+        function reconnectActiveTab() {
+            if (!activeTabId) {
+                openModal();
+                return;
+            }
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab) return;
+
+            // Close existing WebSocket
+            if (tab.ws) {
+                try { tab.ws.close(); } catch(e) {}
+                tab.ws = null;
+            }
+
+            // Clear terminal and reconnect
+            tab.xterm.clear();
+            tab.xterm.write('\x1b[36m[Terminal] Reconnecting...\x1b[0m\r\n');
+            connectWebSocket(tab);
+        }
+
+        // Quick Connect Form Handler
+        quickConnectForm.onsubmit = (e) => {
+            e.preventDefault();
+            const host = document.getElementById('host').value;
+            const port = document.getElementById('port').value;
+            const user = document.getElementById('user').value;
+            const password = document.getElementById('password').value;
+            const protocol = document.getElementById('protocol').value;
+
+            // If a registered device is selected AND not changed, use its ID
+            const finalId = selectedDeviceId ? selectedDeviceId : 'custom';
+            const finalParams = finalId === 'custom' ? { host, port, user, password, protocol } : null;
+
+            createTab(host, finalId, finalParams);
+            closeModal();
+            quickConnectForm.reset();
+            document.getElementById('port').value = 22;
+            selectedDeviceId = null;
+        };
+
+        // Handle Protocol Change in Form
+        document.getElementById('protocol').onchange = function() {
+            document.getElementById('port').value = this.value === 'ssh' ? 22 : 23;
+        };
+
+        // Check for URL parameters
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const routerId = urlParams.get('id');
+            const routerName = urlParams.get('name') || 'Router';
+
+            if (routerId) {
+                createTab(routerName, routerId);
+            } else if (tabs.length === 0) {
+                openModal();
+            }
+            // Initialize font size label with saved value
+            document.getElementById('fontSizeLabel').textContent = currentFontSize + 'px';
+        };
+
+        function toggleShortcuts() {
+            const el = document.getElementById('shortcutsPanel');
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Global Keybindings
+        window.onkeydown = (e) => {
+            if (e.altKey && e.key === 'n') {
+                e.preventDefault();
+                openModal();
+            }
+            if (e.altKey && e.key === 'w' && activeTabId) {
+                e.preventDefault();
+                removeTab(activeTabId);
+            }
+            if (e.altKey && e.key === 'r' && activeTabId) {
+                e.preventDefault();
+                reconnectActiveTab();
+            }
+            // Zoom: Ctrl + Plus / Ctrl + Minus / Ctrl + 0
+            if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
+                e.preventDefault();
+                zoomIn();
+            }
+            if (e.ctrlKey && e.key === '-') {
+                e.preventDefault();
+                zoomOut();
+            }
+            if (e.ctrlKey && e.key === '0') {
+                e.preventDefault();
+                zoomReset();
+            }
+        };
+
+        // Command Input Bar - Send command to active terminal
+        function sendCommand() {
+            const input = document.getElementById('cmdInput');
+            const cmd = input.value;
+            if (!cmd && cmd !== '') return;
+            
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (tab && tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+                // Send command + carriage return
+                tab.ws.send(cmd + '\r');
+                // Echo command locally if local echo is active
+                if (tab.localEcho) {
+                    tab.xterm.write(cmd + '\r\n');
+                }
+                input.value = '';
+                input.focus();
+                hideAutocomplete();
+            }
+        }
+
+        // Send Tab character to active terminal (for native device auto-completion)
+        function sendTabToTerminal() {
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (tab && tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+                // If command input has text, send it first then Tab
+                const input = document.getElementById('cmdInput');
+                if (input.value.trim().length > 0) {
+                    // Check if we have frontend autocomplete matches
+                    if (acCurrentMatches && acCurrentMatches.length > 0) {
+                        // Use frontend autocomplete
+                        const idx = acSelectedIndex >= 0 ? acSelectedIndex : 0;
+                        input.value = acCurrentMatches[idx];
+                        acSelectedIndex = -1;
+                        acCurrentMatches = findMatches(input.value);
+                        updateGhostText(input.value, acCurrentMatches);
+                        renderDropdown(acCurrentMatches, input.value);
+                        return;
+                    }
+                    // Otherwise send text + Tab to device
+                    tab.ws.send(input.value + '\t');
+                    input.value = '';
+                    hideAutocomplete();
+                } else {
+                    // Just send Tab character to the device
+                    tab.ws.send('\t');
+                }
+                // Briefly flash the Tab button
+                const tabBtn = document.querySelector('.qk-tab');
+                if (tabBtn) {
+                    tabBtn.style.transform = 'scale(0.9)';
+                    tabBtn.style.boxShadow = '0 0 12px rgba(59, 130, 246, 0.5)';
+                    setTimeout(() => {
+                        tabBtn.style.transform = '';
+                        tabBtn.style.boxShadow = '';
+                    }, 150);
+                }
+            }
+        }
+
+        // Send special key/character to active terminal
+        function sendSpecialKey(char, btnEl) {
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (tab && tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+                tab.ws.send(char);
+            }
+            // Visual click feedback
+            if (btnEl) {
+                btnEl.style.transform = 'scale(0.9)';
+                btnEl.style.boxShadow = '0 0 12px rgba(59, 130, 246, 0.5)';
+                setTimeout(() => {
+                    btnEl.style.transform = '';
+                    btnEl.style.boxShadow = '';
+                }, 150);
+            }
+        }
+
+        // Dedicated functions for each quick key button to avoid HTML escape issues
+        function sendArrowUp(btnEl) {
+            sendSpecialKey('\x1b[A', btnEl);
+        }
+
+        function sendArrowDown(btnEl) {
+            sendSpecialKey('\x1b[B', btnEl);
+        }
+
+        function sendCtrlC(btnEl) {
+            sendSpecialKey('\x03', btnEl);
+        }
+
+        function sendCtrlZ(btnEl) {
+            sendSpecialKey('\x1a', btnEl);
+        }
+
+        function sendSpace(btnEl) {
+            sendSpecialKey(' ', btnEl);
+        }
+
+        function sendEnterKey(btnEl) {
+            sendSpecialKey('\r', btnEl);
+        }
+
+        // ═══════════════════════════════════════════════
+        // Local Echo System — for devices that don't echo
+        // typed characters (e.g., ZTE OLT C300/C320)
+        // ═══════════════════════════════════════════════
+        function writeLocalEcho(xterm, data) {
+            for (const ch of data) {
+                const code = ch.charCodeAt(0);
+                if (code === 13) {
+                    xterm.write('\r\n');
+                } else if (code === 127 || code === 8) {
+                    xterm.write('\b \b');
+                } else if (code >= 32) {
+                    xterm.write(ch);
+                }
+                // Control chars (Ctrl+C, ESC sequences) are NOT echoed locally
+            }
+        }
+
+        function evaluateEchoDetection(tabObj) {
+            if (tabObj._echoDetect.done) return;
+            
+            const now = Date.now();
+            const expired = tabObj._echoDetect.pending.filter(p => (now - p.time) > 350);
+            const misses = expired.length;
+            tabObj._echoDetect.pending = tabObj._echoDetect.pending.filter(p => (now - p.time) <= 350);
+            
+            const total = tabObj._echoDetect.hits + misses;
+            if (total >= 2) {
+                tabObj._echoDetect.done = true;
+                
+                if (misses > tabObj._echoDetect.hits) {
+                    // Device does NOT echo → enable local echo
+                    tabObj.localEcho = true;
+                    
+                    // Display buffered chars that weren't shown
+                    if (tabObj._echoDetect.buffer.length > 0) {
+                        tabObj.xterm.write(tabObj._echoDetect.buffer);
+                    }
+                    
+                    tabObj.xterm.write('\r\n\x1b[33m[Auto-Detect] Local echo diaktifkan — device tidak mengirim echo.\x1b[0m\r\n');
+                    updateEchoToggleUI();
+                }
+                
+                tabObj._echoDetect.buffer = '';
+                tabObj._echoDetect.pending = [];
+            }
+        }
+
+        function toggleLocalEcho() {
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab) return;
+            
+            tab.localEcho = !tab.localEcho;
+            tab._echoDetect.done = true;
+            updateEchoToggleUI();
+            
+            const msg = tab.localEcho 
+                ? '\r\n\x1b[32m[Terminal] ✓ Local echo: ON — ketikan ditampilkan lokal.\x1b[0m\r\n'
+                : '\r\n\x1b[33m[Terminal] ✗ Local echo: OFF — echo dari device.\x1b[0m\r\n';
+            tab.xterm.write(msg);
+        }
+
+        function updateEchoToggleUI() {
+            const btn = document.getElementById('echoToggle');
+            if (!btn) return;
+            const tab = tabs.find(t => t.id === activeTabId);
+            
+            if (!tab || !tab._echoDetect.done) {
+                btn.innerHTML = '🔤 Echo: Auto';
+                btn.style.borderColor = '';
+                btn.style.color = '';
+                return;
+            }
+            
+            if (tab.localEcho) {
+                btn.innerHTML = '🔤 Echo: ON';
+                btn.style.borderColor = 'var(--accent)';
+                btn.style.color = 'var(--accent)';
+            } else {
+                btn.innerHTML = '🔤 Echo: OFF';
+                btn.style.borderColor = '';
+                btn.style.color = 'var(--text-dim)';
+            }
+        }
+
+        // Help button click handler - prevent dropdown from closing immediately
+        function onHelpBtnClick(event, btnEl) {
+            event.stopPropagation();
+            // Visual feedback
+            if (btnEl) {
+                btnEl.style.transform = 'scale(0.9)';
+                btnEl.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.5)';
+                setTimeout(() => {
+                    btnEl.style.transform = '';
+                    btnEl.style.boxShadow = '';
+                }, 150);
+            }
+            showHelpForInput();
+        }
+
+        // ═══════════════════════════════════════════════
+        // CLI Auto-Complete Command Dictionary
+        // ═══════════════════════════════════════════════
+        const CLI_COMMANDS = [
+            // ============================================
+            // GENERAL / COMMON
+            // ============================================
+            'show', 'show version', 'show clock', 'show history', 'show users',
+            'show running-config', 'show startup-config', 'show logging',
+            'show interface', 'show ip interface brief', 'show ip route',
+            'show tech-support', 'show processes cpu', 'show memory',
+            'configure terminal', 'config', 'conf t',
+            'enable', 'disable', 'exit', 'end', 'quit',
+            'ping', 'traceroute', 'telnet', 'ssh',
+            'write memory', 'write', 'copy running-config startup-config',
+            'no', 'no shutdown', 'shutdown',
+            'terminal length 0', 'terminal monitor',
+            'reload', 'reboot',
+
+            // ============================================
+            // ZTE GPON OLT (C300/C320/C600/C650)
+            // ============================================
+            // --- show gpon onu state (per OLT port) ---
+            'show gpon', 'show gpon onu',
+            'show gpon onu state gpon-olt_1/1/1',
+            'show gpon onu state gpon-olt_1/1/2',
+            'show gpon onu state gpon-olt_1/1/3',
+            'show gpon onu state gpon-olt_1/1/4',
+            'show gpon onu state gpon-olt_1/1/5',
+            'show gpon onu state gpon-olt_1/1/6',
+            'show gpon onu state gpon-olt_1/1/7',
+            'show gpon onu state gpon-olt_1/1/8',
+            'show gpon onu state gpon-olt_1/1/9',
+            'show gpon onu state gpon-olt_1/1/10',
+            'show gpon onu state gpon-olt_1/1/11',
+            'show gpon onu state gpon-olt_1/1/12',
+            'show gpon onu state gpon-olt_1/1/13',
+            'show gpon onu state gpon-olt_1/1/14',
+            'show gpon onu state gpon-olt_1/1/15',
+            'show gpon onu state gpon-olt_1/1/16',
+            'show gpon onu state',
+
+            // --- show gpon onu detail-info (target = ONU, bukan OLT!) ---
+            'show gpon onu detail-info gpon-onu_1/1/1:1',
+            'show gpon onu detail-info gpon-onu_1/1/1:2',
+            'show gpon onu detail-info gpon-onu_1/1/1:3',
+            'show gpon onu detail-info gpon-onu_1/1/2:1',
+            'show gpon onu detail-info gpon-onu_1/1/2:2',
+            'show gpon onu detail-info gpon-onu_1/1/3:1',
+            'show gpon onu detail-info gpon-onu_1/1/4:1',
+            'show gpon onu detail-info',
+
+            // --- show gpon onu uncfg (per OLT port) ---
+            'show gpon onu uncfg gpon-olt_1/1/1',
+            'show gpon onu uncfg gpon-olt_1/1/2',
+            'show gpon onu uncfg gpon-olt_1/1/3',
+            'show gpon onu uncfg gpon-olt_1/1/4',
+            'show gpon onu uncfg',
+            'show gpon onu by sn',
+            'show gpon onu-profile gpon-olt_1/1/1',
+            'show gpon onu-profile',
+
+            // --- show gpon olt state (per OLT port) ---
+            'show gpon olt state gpon-olt_1/1/1',
+            'show gpon olt state gpon-olt_1/1/2',
+            'show gpon olt state gpon-olt_1/1/3',
+            'show gpon olt state gpon-olt_1/1/4',
+            'show gpon olt state',
+            'show gpon stats',
+
+            // --- show gpon remote-onu (target = ONU) ---
+            'show gpon remote-onu interface pon gpon-onu_1/1/1:1',
+            'show gpon remote-onu interface pon gpon-onu_1/1/2:1',
+            'show gpon remote-onu interface pon gpon-onu_1/1/3:1',
+            'show gpon remote-onu interface pon gpon-onu_1/1/4:1',
+            'show gpon remote-onu interface pon',
+            'show gpon remote-onu equip gpon-onu_1/1/1:1',
+            'show gpon remote-onu equip gpon-onu_1/1/2:1',
+            'show gpon remote-onu equip',
+            'show gpon remote-onu ip-host gpon-onu_1/1/1:1',
+            'show gpon remote-onu ip-host',
+
+            // --- show pon power (per OLT port) ---
+            'show pon power attenuation gpon-olt_1/1/1',
+            'show pon power attenuation gpon-olt_1/1/2',
+            'show pon power attenuation gpon-olt_1/1/3',
+            'show pon power attenuation gpon-olt_1/1/4',
+            'show pon power attenuation',
+            'show pon power onu-rx gpon-olt_1/1/1',
+            'show pon power onu-rx gpon-olt_1/1/2',
+            'show pon power onu-rx',
+            'show pon power onu-tx gpon-olt_1/1/1',
+            'show pon power onu-tx gpon-olt_1/1/2',
+            'show pon power onu-tx',
+
+            // --- ZTE GPON interface & config ---
+            'interface gpon-olt_1/1/1',
+            'interface gpon-olt_1/1/2',
+            'interface gpon-olt_1/1/3',
+            'interface gpon-olt_1/1/4',
+            'interface gpon-olt_1/1/5',
+            'interface gpon-olt_1/1/6',
+            'interface gpon-olt_1/1/7',
+            'interface gpon-olt_1/1/8',
+            'interface gpon-onu_1/1/1:1',
+            'interface gpon-onu_1/1/1:2',
+            'interface gpon-onu_1/1/2:1',
+            'interface gpon-onu_1/1/3:1',
+            'interface gpon-onu_1/1/4:1',
+            'interface vport-',
+            'pon-onu-mng gpon-onu_1/1/1:1',
+            'pon-onu-mng gpon-onu_1/1/1:2',
+            'pon-onu-mng gpon-onu_1/1/2:1',
+            'pon-onu-mng gpon-onu_1/1/3:1',
+            'pon-onu-mng gpon-onu_1/1/4:1',
+            'pon-onu-mng',
+
+            // --- ZTE ONU config ---
+            'onu-type', 'onu-profile',
+            'vlan port', 'vlan port eth 1 mode tag vlan',
+            'tcont 1 profile',
+            'gemport 1 tcont 1',
+            'service-port', 'service-port vlan',
+            'switchport mode trunk vport 1',
+            'show service-port',
+
+            // --- ZTE system ---
+            'show card', 'show card slotno',
+            'show cpu', 'show cpu-usage',
+            'show temperature', 'show fan',
+            'show power', 'show sysevent',
+            'show hostname',
+            'show mac',
+            'show line', 'show line vty',
+
+            // ============================================
+            // ZTE EPON OLT
+            // ============================================
+            'show epon', 'show epon onu',
+            // --- show epon onu state (per OLT port) ---
+            'show epon onu state epon-olt_1/1/1',
+            'show epon onu state epon-olt_1/1/2',
+            'show epon onu state epon-olt_1/1/3',
+            'show epon onu state epon-olt_1/1/4',
+            'show epon onu state epon-olt_1/1/5',
+            'show epon onu state epon-olt_1/1/6',
+            'show epon onu state epon-olt_1/1/7',
+            'show epon onu state epon-olt_1/1/8',
+            'show epon onu state',
+            // --- show epon onu detail-info (target = ONU!) ---
+            'show epon onu detail-info epon-onu_1/1/1:1',
+            'show epon onu detail-info epon-onu_1/1/1:2',
+            'show epon onu detail-info epon-onu_1/1/2:1',
+            'show epon onu detail-info',
+            // --- show epon onu uncfg (per OLT port) ---
+            'show epon onu uncfg epon-olt_1/1/1',
+            'show epon onu uncfg epon-olt_1/1/2',
+            'show epon onu uncfg',
+            // --- show epon olt state ---
+            'show epon olt state epon-olt_1/1/1',
+            'show epon olt state',
+            // --- show epon remote-onu (target = ONU) ---
+            'show epon remote-onu interface epon-onu_1/1/1:1',
+            'show epon remote-onu interface epon-onu_1/1/2:1',
+            'show epon remote-onu interface',
+            'show epon statistics epon-olt_1/1/1',
+            'show epon statistics',
+            // --- EPON interface config ---
+            'interface epon-olt_1/1/1',
+            'interface epon-olt_1/1/2',
+            'interface epon-olt_1/1/3',
+            'interface epon-olt_1/1/4',
+            'interface epon-onu_1/1/1:1',
+            'interface epon-onu_1/1/1:2',
+            'interface epon-onu_1/1/2:1',
+
+            // ============================================
+            // HSGQ / HIOSO OLT (HA7302/HA7304/HA7308)
+            // ============================================
+            // --- PON & ONU Management ---
+            'show onu information pon 1/1/1',
+            'show onu information pon 1/1/2',
+            'show onu information pon 1/1/3',
+            'show onu information pon 1/1/4',
+            'show onu information pon',
+            'show onu information inactive pon 1/1/1',
+            'show onu information inactive pon',
+            'show onu information inactive',
+            'show onu register-status pon 1/1/1',
+            'show onu register-status pon 1/1/2',
+            'show onu register-status pon',
+            'show onu running information pon 1/1/1',
+            'show onu running information pon',
+            'show onu uncfg pon 1/1/1',
+            'show onu uncfg pon 1/1/2',
+            'show onu uncfg',
+            'show onu detail-info pon 1/1/1 onu 1',
+            'show onu detail-info pon 1/1/1 onu 2',
+            'show onu detail-info pon 1/1/2 onu 1',
+            'show onu detail-info',
+
+            // --- PON optic / power ---
+            'show pon optical-info pon 1/1/1',
+            'show pon optical-info pon 1/1/2',
+            'show pon optical-info pon 1/1/3',
+            'show pon optical-info pon 1/1/4',
+            'show pon optical-info',
+            'show onu optical-info pon 1/1/1 onu 1',
+            'show onu optical-info pon 1/1/1 onu 2',
+            'show onu optical-info pon 1/1/1',
+            'show onu optical-info pon 1/1/2',
+            'show onu optical-info',
+
+            // --- PON port info ---
+            'show pon port info pon 1/1/1',
+            'show pon port info pon 1/1/2',
+            'show pon port info',
+            'show pon statistics pon 1/1/1',
+            'show pon statistics pon 1/1/2',
+            'show pon statistics',
+
+            // --- HSGQ System ---
+            'show slot', 'show slot status',
+            'show sysinfo', 'show sysevent',
+            'show card status',
+            'show vlan',
+            'show vlan all',
+            'show vlan service',
+            'show service-port all',
+            'show service-port',
+            'show mac-address table',
+            'show mac-address',
+            'show arp',
+
+            // --- HSGQ Config ---
+            'onu add pon 1/1/1 sn',
+            'onu add pon 1/1/2 sn',
+            'onu delete pon 1/1/1 onu 1',
+            'onu delete pon 1/1/1 onu',
+            'service-port add',
+            'service-port delete',
+            'pon-onu-mng pon 1/1/1 onu 1',
+            'pon-onu-mng pon 1/1/1 onu 2',
+            'pon-onu-mng pon 1/1/2 onu 1',
+
+            // ============================================
+            // HUAWEI OLT (MA5600T/MA5800/MA5608T)
+            // ============================================
+            'display', 'display ont info',
+            'display ont info 0 all',
+            'display ont info 0 1',
+            'display ont info 0 2',
+            'display ont info 0 3',
+            'display ont info 0 4',
+            'display ont info summary 0',
+            'display ont info summary',
+            'display ont autofind all',
+            'display ont autofind 0',
+            'display ont autofind',
+            'display ont optical-info 0 all',
+            'display ont optical-info 0 1',
+            'display ont optical-info',
+            'display ont port state 0 all',
+            'display ont port state',
+            'display ont register-info 0 all',
+            'display ont register-info',
+            'display ont version 0 all',
+            'display ont version',
+            'display ont wan-info 0 all',
+            'display ont wan-info 0 1',
+            'display service-port all',
+            'display service-port vlan',
+            'display board 0',
+            'display board',
+            'display version',
+            'display alarm active',
+            'display alarm history',
+            'display alarm',
+            'display interface brief',
+            'display interface gpon 0/0',
+            'display interface gpon 0/1',
+            'display interface gpon 0/2',
+            'display interface gpon 0/3',
+            'display interface',
+            'display current-configuration',
+            'display current-configuration section-number',
+            'display saved-configuration',
+            'display mac-address all',
+            'display mac-address port',
+            'display mac-address',
+            'display cpu',
+            'display memory',
+            'display temperature',
+            'display patch all',
+            'display sysman service state',
+            'display traffic table ip',
+            'display dba-profile all',
+            'display line-profile gpon all',
+            'display srv-profile gpon all',
+            'display port state all',
+            'display ont info by-sn',
+
+            // --- Huawei config ---
+            'ont confirm 0',
+            'ont delete 0',
+            'ont add', 'ont port native-vlan',
+            'ont modify',
+            'service-port vlan',
+            'undo service-port',
+            'interface gpon 0/0',
+            'interface gpon 0/1',
+            'interface gpon 0/2',
+            'interface gpon 0/3',
+            'btv', 'dba-profile add',
+            'line-profile gpon', 'srv-profile gpon',
+            'scroll 512',
+            'undo smart',
+            'enable',
+
+            // ============================================
+            // FIBERHOME OLT (AN5516/AN5006)
+            // ============================================
+            'show onu', 'show onu state',
+            'show onu running config',
+            'show authorization', 'show authorization slot',
+            'show optic_module', 'show optic_module slot',
+            'show card status',
+            'show slot', 'show slot configuration',
+            'show ponport', 'show ponport optical-info',
+            'show onu optical-info',
+            'show traffic', 'show traffic table',
+            'show vlan service',
+            'set onu', 'set whitelist',
+
+            // ============================================
+            // NOKIA/ALCATEL-LUCENT OLT (ISAM/7360)
+            // ============================================
+            'show equipment slot',
+            'show equipment ont interface',
+            'show equipment ont optics',
+            'show equipment ont status',
+            'show vlan bridge-port-fdb',
+            'show vlan residential-bridge',
+
+            // ============================================
+            // CISCO IOS / IOS-XE
+            // ============================================
+            'show vlan', 'show vlan brief',
+            'show mac address-table', 'show mac address-table dynamic',
+            'show spanning-tree', 'show spanning-tree summary',
+            'show cdp neighbors', 'show cdp neighbors detail',
+            'show arp', 'show arp vrf',
+            'show access-lists',
+            'show etherchannel summary',
+            'show port-security',
+            'show env all', 'show env temperature',
+            'show inventory', 'show module',
+            'show ip ospf neighbor', 'show ip ospf interface',
+            'show ip bgp summary', 'show ip bgp',
+            'show ip protocols',
+            'show ip nat translations',
+            'show interfaces status',
+            'show interfaces trunk',
+            'show interfaces description',
+            'show ntp status', 'show ntp associations',
+            'show snmp', 'show snmp community',
+            'show standby', 'show standby brief',
+
+            // ============================================
+            // RUIJIE RGOS
+            // ============================================
+            'show ip ospf', 'show ip ospf neighbor',
+            'show nfpp', 'show nfpp summary',
+            'show cpu-usage', 'show memory-usage',
+            'show power-supply',
+            'show interface counters',
+            'show aggregateport summary',
+            'show dot1x',
+            'show dhcp-snooping binding',
+            'show port-security interface',
+            'show storm-control',
+            'show lldp neighbors',
+
+            // ============================================
+            // JUNIPER JUNOS
+            // ============================================
+            'show route', 'show route summary', 'show route table',
+            'show chassis hardware', 'show chassis environment',
+            'show chassis alarms', 'show chassis routing-engine',
+            'show bgp summary', 'show bgp neighbor',
+            'show ospf neighbor', 'show ospf interface',
+            'show interfaces terse', 'show interfaces extensive',
+            'show interfaces diagnostics optics',
+            'show system uptime', 'show system alarm',
+            'show system storage', 'show system processes',
+            'show configuration', 'show configuration interfaces',
+            'show log messages', 'show log chassisd',
+            'show class-of-service interface',
+            'show firewall', 'show firewall filter',
+            'request system reboot',
+            'set interfaces', 'set protocols',
+            'commit', 'commit check', 'rollback',
+
+            // ============================================
+            // MIKROTIK ROUTEROS
+            // ============================================
+            'ip address print', 'ip address add',
+            'ip route print', 'ip route add',
+            'ip firewall filter print', 'ip firewall filter add',
+            'ip firewall nat print', 'ip firewall nat add',
+            'ip firewall mangle print',
+            'ip firewall address-list print',
+            'ip dns print', 'ip dns set',
+            'ip pool print', 'ip dhcp-server print',
+            'ip dhcp-server lease print',
+            'ip arp print',
+            'ip neighbor print',
+            'interface print', 'interface monitor-traffic',
+            'interface ethernet print',
+            'interface bridge print', 'interface bridge port print',
+            'interface wireless print', 'interface wireless registration-table print',
+            'interface pppoe-server print',
+            'system resource print', 'system identity print',
+            'system clock print', 'system routerboard print',
+            'system package print', 'system package update check-for-updates',
+            'system reboot', 'system shutdown',
+            'system backup save', 'system backup load',
+            'system health print',
+            'queue simple print', 'queue tree print',
+            'ppp secret print', 'ppp active print',
+            'ppp profile print',
+            'log print', 'log print where topics~"error"',
+            'tool bandwidth-test',
+            'tool ping', 'tool traceroute', 'tool flood-ping',
+            'tool torch', 'tool netwatch print',
+            'user print', 'user active print',
+            'export', 'export compact', 'import',
+        ].sort();
+
+        const cmdInput = document.getElementById('cmdInput');
+        const acGhost = document.getElementById('acGhost');
+        const acDropdown = document.getElementById('acDropdown');
+        const acWrapper = document.getElementById('acWrapper');
+        let acSelectedIndex = -1;
+        let acCurrentMatches = [];
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function findMatches(input) {
+            if (!input || input.trim().length === 0) return [];
+            const lower = input.toLowerCase();
+            return CLI_COMMANDS.filter(cmd =>
+                cmd.toLowerCase().startsWith(lower) && cmd.toLowerCase() !== lower
+            );
+        }
+
+        function updateGhostText(input, matches) {
+            if (matches.length > 0 && input.length > 0) {
+                const bestMatch = matches[acSelectedIndex >= 0 ? acSelectedIndex : 0];
+                const completion = bestMatch.slice(input.length);
+                acGhost.innerHTML = `<span class="ghost-typed">${escapeHtml(input)}</span><span class="ghost-completion">${escapeHtml(completion)}</span>`;
+                acWrapper.classList.add('has-suggestion');
+            } else {
+                acGhost.innerHTML = '';
+                acWrapper.classList.remove('has-suggestion');
+            }
+        }
+
+        function renderDropdown(matches, input) {
+            if (matches.length <= 1 || input.length === 0) {
+                acDropdown.classList.remove('show');
+                acDropdown.innerHTML = '';
+                return;
+            }
+
+            const maxShow = Math.min(matches.length, 12);
+            let html = '';
+            for (let i = 0; i < maxShow; i++) {
+                const cmd = matches[i];
+                const matchPart = cmd.slice(0, input.length);
+                const restPart = cmd.slice(input.length);
+                const selected = i === acSelectedIndex ? ' selected' : '';
+                html += `<div class="autocomplete-item${selected}" data-index="${i}" onclick="selectAutocomplete(${i})">`
+                    + `<span class="ac-match">${escapeHtml(matchPart)}</span>${escapeHtml(restPart)}</div>`;
+            }
+            if (matches.length > maxShow) {
+                html += `<div class="autocomplete-item" style="color:var(--text-dim);font-style:italic;cursor:default">... dan ${matches.length - maxShow} lainnya</div>`;
+            }
+            acDropdown.innerHTML = html;
+            acDropdown.classList.add('show');
+        }
+
+        function selectAutocomplete(index) {
+            if (acCurrentMatches[index]) {
+                cmdInput.value = acCurrentMatches[index];
+                cmdInput.focus();
+                // Check for further sub-completions
+                acSelectedIndex = -1;
+                acCurrentMatches = findMatches(cmdInput.value);
+                updateGhostText(cmdInput.value, acCurrentMatches);
+                renderDropdown(acCurrentMatches, cmdInput.value);
+            }
+        }
+
+        function hideAutocomplete() {
+            acDropdown.classList.remove('show');
+            acDropdown.innerHTML = '';
+            acGhost.innerHTML = '';
+            acWrapper.classList.remove('has-suggestion');
+            acSelectedIndex = -1;
+            acCurrentMatches = [];
+        }
+
+        // ═══════════════════════════════════════════════
+        // "?" Help Mode - Show available sub-commands
+        // ═══════════════════════════════════════════════
+        function showHelpForInput() {
+            const input = document.getElementById('cmdInput');
+            let prefix = input.value.trim();
+            const tab = tabs.find(t => t.id === activeTabId);
+
+            // If input is empty, show top-level commands
+            if (prefix.length === 0) {
+                prefix = '';
+            }
+
+            // Find all commands that start with this prefix
+            const lower = prefix.toLowerCase();
+            let helpMatches;
+
+            if (lower.length === 0) {
+                // Show unique first-words
+                const firstWords = new Set();
+                CLI_COMMANDS.forEach(cmd => {
+                    const word = cmd.split(' ')[0];
+                    firstWords.add(word);
+                });
+                helpMatches = Array.from(firstWords).sort();
+            } else {
+                // Show unique next-words after the prefix
+                const nextWords = new Set();
+                const fullMatches = [];
+                CLI_COMMANDS.forEach(cmd => {
+                    if (cmd.toLowerCase().startsWith(lower) && cmd.toLowerCase() !== lower) {
+                        fullMatches.push(cmd);
+                        const rest = cmd.slice(prefix.length).trim();
+                        if (rest.length > 0) {
+                            const nextWord = rest.split(' ')[0];
+                            nextWords.add(nextWord);
+                        }
+                    }
+                });
+
+                if (nextWords.size > 0 && nextWords.size <= 30) {
+                    helpMatches = Array.from(nextWords).sort();
+                } else {
+                    helpMatches = fullMatches.slice(0, 30);
+                }
+            }
+
+            // ── Always send "?" to device via WebSocket for native help ──
+            if (tab && tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+                if (prefix.length > 0) {
+                    tab.ws.send(prefix + '?');
+                } else {
+                    tab.ws.send('?');
+                }
+            }
+
+            // ── Display local dictionary help in the xterm terminal ──
+            if (tab && helpMatches.length > 0) {
+                const xterm = tab.xterm;
+
+                xterm.write('\r\n');
+                xterm.write('\x1b[36m╔══════════════════════════════════════════════════════════╗\x1b[0m\r\n');
+                xterm.write('\x1b[36m║\x1b[0m  \x1b[1;33m? HELP\x1b[0m — ');
+
+                if (prefix.length > 0) {
+                    xterm.write(`Sub-commands for \x1b[1;32m"${prefix}"\x1b[0m`);
+                } else {
+                    xterm.write('\x1b[37mPerintah tersedia (dictionary lokal)\x1b[0m');
+                }
+                xterm.write('\r\n');
+                xterm.write('\x1b[36m╠══════════════════════════════════════════════════════════╣\x1b[0m\r\n');
+
+                // Calculate column width
+                let maxLen = 0;
+                helpMatches.forEach(kw => { if (kw.length > maxLen) maxLen = kw.length; });
+                const colWidth = Math.min(Math.max(maxLen + 4, 20), 30);
+
+                const maxShow = Math.min(helpMatches.length, 40);
+                const useTwoCols = maxShow > 10;
+
+                if (useTwoCols) {
+                    const half = Math.ceil(maxShow / 2);
+                    for (let i = 0; i < half; i++) {
+                        const kw1 = helpMatches[i] || '';
+                        const kw2 = (i + half < maxShow) ? helpMatches[i + half] : '';
+                        const pad1 = ' '.repeat(Math.max(colWidth - kw1.length, 1));
+                        xterm.write(`\x1b[36m║\x1b[0m  \x1b[1;32m${kw1}\x1b[0m${pad1}`);
+                        if (kw2) {
+                            xterm.write(`\x1b[1;32m${kw2}\x1b[0m`);
+                        }
+                        xterm.write('\r\n');
+                    }
+                } else {
+                    for (let i = 0; i < maxShow; i++) {
+                        xterm.write(`\x1b[36m║\x1b[0m  \x1b[1;32m${helpMatches[i]}\x1b[0m\r\n`);
+                    }
+                }
+
+                if (helpMatches.length > maxShow) {
+                    xterm.write(`\x1b[36m║\x1b[0m  \x1b[2;37m... dan ${helpMatches.length - maxShow} perintah lainnya\x1b[0m\r\n`);
+                }
+
+                xterm.write('\x1b[36m╠══════════════════════════════════════════════════════════╣\x1b[0m\r\n');
+                xterm.write('\x1b[36m║\x1b[0m  \x1b[2;37mTip: Ketik perintah + Tab untuk auto-complete\x1b[0m\r\n');
+                xterm.write('\x1b[36m║\x1b[0m  \x1b[2;37mTip: Respons device "?" ditampilkan di bawah ↓\x1b[0m\r\n');
+                xterm.write('\x1b[36m╚══════════════════════════════════════════════════════════╝\x1b[0m\r\n');
+            }
+
+            // ── Also render help in the dropdown (for quick-select) ──
+            if (helpMatches.length > 0) {
+                const contextLabel = prefix.length > 0 ? `"${prefix}" sub-commands` : 'Perintah tersedia';
+                let html = `<div class="ac-help-header">${escapeHtml(contextLabel)}</div>`;
+
+                const maxDropdown = Math.min(helpMatches.length, 20);
+                for (let i = 0; i < maxDropdown; i++) {
+                    const kw = helpMatches[i];
+                    const fullCmd = prefix.length > 0
+                        ? (prefix.endsWith(' ') ? prefix + kw : prefix + ' ' + kw)
+                        : kw;
+                    html += `<div class="ac-help-keyword" onclick="applyHelpKeyword('${escapeHtml(fullCmd)}')">`
+                        + `${escapeHtml(kw)}</div>`;
+                }
+                if (helpMatches.length > maxDropdown) {
+                    html += `<div class="autocomplete-item" style="color:var(--text-dim);font-style:italic;cursor:default;font-size:0.75rem">... dan ${helpMatches.length - maxDropdown} lainnya</div>`;
+                }
+
+                acDropdown.innerHTML = html;
+                acDropdown.classList.add('show');
+                acGhost.innerHTML = '';
+            }
+
+            input.focus();
+        }
+
+        function applyHelpKeyword(fullCmd) {
+            const input = document.getElementById('cmdInput');
+            input.value = fullCmd;
+            input.focus();
+            // Update autocomplete for the new value
+            acSelectedIndex = -1;
+            acCurrentMatches = findMatches(input.value);
+            updateGhostText(input.value, acCurrentMatches);
+            renderDropdown(acCurrentMatches, input.value);
+        }
+
+        // Update suggestions on input
+        cmdInput.addEventListener('input', function() {
+            const val = this.value;
+            acSelectedIndex = -1;
+            acCurrentMatches = findMatches(val);
+            updateGhostText(val, acCurrentMatches);
+            renderDropdown(acCurrentMatches, val);
+        });
+
+        // Handle keyboard in command input
+        cmdInput.addEventListener('keydown', function(e) {
+            // Tab = autocomplete
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                if (acCurrentMatches.length > 0) {
+                    const idx = acSelectedIndex >= 0 ? acSelectedIndex : 0;
+                    cmdInput.value = acCurrentMatches[idx];
+                    // Re-search for sub-completions
+                    acSelectedIndex = -1;
+                    acCurrentMatches = findMatches(cmdInput.value);
+                    updateGhostText(cmdInput.value, acCurrentMatches);
+                    renderDropdown(acCurrentMatches, cmdInput.value);
+                }
+                return;
+            }
+
+            // Enter = send command
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                hideAutocomplete();
+                sendCommand();
+                return;
+            }
+
+            // Arrow Down = navigate dropdown
+            if (e.key === 'ArrowDown' && acCurrentMatches.length > 1) {
+                e.preventDefault();
+                acSelectedIndex = Math.min(acSelectedIndex + 1, Math.min(acCurrentMatches.length, 12) - 1);
+                updateGhostText(cmdInput.value, acCurrentMatches);
+                renderDropdown(acCurrentMatches, cmdInput.value);
+                return;
+            }
+
+            // Arrow Up = navigate dropdown
+            if (e.key === 'ArrowUp' && acCurrentMatches.length > 1) {
+                e.preventDefault();
+                acSelectedIndex = Math.max(acSelectedIndex - 1, 0);
+                updateGhostText(cmdInput.value, acCurrentMatches);
+                renderDropdown(acCurrentMatches, cmdInput.value);
+                return;
+            }
+
+            // Escape = close dropdown
+            if (e.key === 'Escape') {
+                hideAutocomplete();
+            }
+
+            // "?" key = show help (Cisco-style)
+            if (e.key === '?' && !e.ctrlKey && !e.altKey) {
+                e.preventDefault();
+                showHelpForInput();
+            }
+        });
+
+        // Close dropdown on click outside
+        document.addEventListener('click', function(e) {
+            if (!acWrapper.contains(e.target)) {
+                hideAutocomplete();
+            }
+        });
+
+        // Initialize icons for input bar
+        lucide.createIcons();
+
+        // ═══════════════════════════════════════════════
+        // Fix viewport height for tablet/mobile browsers
+        // On mobile/tablet, 100vh includes browser chrome (address bar, etc.)
+        // This ensures Quick Keys & Command Input bars are always visible
+        // ═══════════════════════════════════════════════
+        function setRealViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--real-vh', `${vh}px`);
+            document.body.style.height = `${window.innerHeight}px`;
+            // Re-fit active terminal
+            if (activeTabId) {
+                const tab = tabs.find(t => t.id === activeTabId);
+                if (tab && tab.fitAddon) {
+                    setTimeout(() => tab.fitAddon.fit(), 100);
+                }
+            }
+        }
+        setRealViewportHeight();
+        window.addEventListener('resize', setRealViewportHeight);
+        // Also handle orientation change on tablets
+        window.addEventListener('orientationchange', () => {
+            setTimeout(setRealViewportHeight, 200);
+        });
+        // Handle visual viewport resize (when virtual keyboard appears/disappears)
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                document.body.style.height = `${window.visualViewport.height}px`;
+                if (activeTabId) {
+                    const tab = tabs.find(t => t.id === activeTabId);
+                    if (tab && tab.fitAddon) {
+                        setTimeout(() => tab.fitAddon.fit(), 100);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
